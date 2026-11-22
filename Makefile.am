@@ -22,7 +22,9 @@ rust_manifests = Cargo.toml common/Cargo.toml jobmarshal/Cargo.toml wrapper/Carg
 EXTRA_DIST = $(rust_sources) $(rust_tests) $(rust_manifests) Cargo.lock \
 	rust-toolchain.toml rustfmt.toml prek.toml .gitignore .cargo/audit.toml \
 	admin/check-dependencies.sh admin/check-install.sh admin/check-sources.sh \
-	admin/check-markers.sh .github/workflows/test.yml .github/workflows/audit.yml
+	admin/check-markers.sh admin/check-wrappers.sh .github/workflows/test.yml .github/workflows/audit.yml
+
+AM_DISTCHECK_CONFIGURE_FLAGS = --enable-wrappers='@JOBMARSHAL_WRAPPERS@'
 
 cargo_target_dir = $(abs_top_builddir)/target
 cargo_env = CARGO_TARGET_DIR="$(cargo_target_dir)"
@@ -39,17 +41,62 @@ debug:
 check-local: debug
 	cd "$(abs_top_srcdir)" && $(cargo_env) $(CARGO) test $(cargo_manifest) --workspace --locked
 	cd "$(abs_top_srcdir)" && sh admin/check-sources.sh
+	sh "$(abs_top_srcdir)/admin/check-wrappers.sh" "$(MAKE)" "$(abs_top_builddir)/$(PACKAGE)-$(VERSION).tar.gz" "$(cargo_target_dir)"
 lint:
 	cd "$(abs_top_srcdir)" && $(cargo_env) prek run --all-files
 clean-local:
 	cd "$(abs_top_srcdir)" && $(cargo_env) $(CARGO) clean $(cargo_manifest)
+.PHONY: install-wrapper-preflight
+# Check ownership while the previous wrapper inode still identifies its links.
+install-dist_docDATA install-man1 install-exec-local: install-wrapper-preflight
+install-wrapper-preflight:
+	@set -eu; \
+	bindir="$(DESTDIR)$(bindir)"; wrapper="$(DESTDIR)$(libexecdir)/jobmarshal-wrapper"; \
+	if test -L "$$wrapper" || { test -e "$$wrapper" && test ! -f "$$wrapper"; }; then \
+	    echo "Refusing to replace unrelated wrapper path: $$wrapper" >&2; exit 1; \
+	fi; \
+	for name in @JOBMARSHAL_WRAPPERS@; do \
+	    destination="$$bindir/$$name"; \
+	    if test -e "$$destination" || test -L "$$destination"; then \
+	        if test -L "$$destination" || test ! -f "$$destination" || test ! "$$destination" -ef "$$wrapper"; then \
+	            echo "Refusing to replace unrelated wrapper destination: $$destination" >&2; exit 1; \
+	        fi; \
+	    fi; \
+	done; \
+	$(MKDIR_P) "$$bindir" "$(DESTDIR)$(libexecdir)"; \
+	if test -n '@JOBMARSHAL_WRAPPERS@'; then \
+	    libwork=$$(mktemp -d "$(DESTDIR)$(libexecdir)/.jobmarshal-install.XXXXXXXX"); \
+	    bindwork=; \
+	    trap 'rm -f "$$libwork/probe"; rmdir "$$libwork"; if test -n "$$bindwork"; then rm -f "$$bindwork/probe"; rmdir "$$bindwork"; fi' EXIT HUP INT TERM; \
+	    bindwork=$$(mktemp -d "$$bindir/.jobmarshal-links.XXXXXXXX"); \
+	    : > "$$libwork/probe"; \
+	    if ! ln "$$libwork/probe" "$$bindwork/probe"; then \
+	        echo 'Cannot install wrapper hardlinks: bindir and libexecdir must support hardlinks on the same filesystem' >&2; exit 1; \
+	    fi; \
+	fi
 install-exec-local: release
-	$(MKDIR_P) "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libexecdir)"
-	$(INSTALL_PROGRAM) "$(cargo_target_dir)/release/jobmarshal" "$(DESTDIR)$(bindir)/jobmarshal"
-	$(INSTALL_PROGRAM) "$(cargo_target_dir)/release/jobmarshal-wrapper" \
-	    "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper"
+	@set -eu; \
+	work=$$(mktemp -d "$(DESTDIR)$(libexecdir)/.jobmarshal-install.XXXXXXXX"); \
+	trap 'rm -f "$$work/wrapper"; rmdir "$$work"' EXIT HUP INT TERM; \
+	$(INSTALL_PROGRAM) "$(cargo_target_dir)/release/jobmarshal-wrapper" "$$work/wrapper"; \
+	$(INSTALL_PROGRAM) "$(cargo_target_dir)/release/jobmarshal" "$(DESTDIR)$(bindir)/jobmarshal"; \
+	for name in @JOBMARSHAL_WRAPPERS@; do rm -f "$(DESTDIR)$(bindir)/$$name"; done; \
+	mv -f "$$work/wrapper" "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper"; \
+	for name in @JOBMARSHAL_WRAPPERS@; do \
+	    if ! ln "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper" "$(DESTDIR)$(bindir)/$$name"; then \
+	        echo "Cannot install wrapper hardlink $$name; check bindir/libexecdir permissions and filesystem" >&2; exit 1; \
+	    fi; \
+	done
 uninstall-local:
-	rm -f "$(DESTDIR)$(bindir)/jobmarshal"
-	rm -f "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper"
+	@set -eu; \
+	for name in @JOBMARSHAL_WRAPPERS@; do \
+	    destination="$(DESTDIR)$(bindir)/$$name"; \
+	    if test ! -L "$$destination" && test -f "$$destination" && \
+	        test "$$destination" -ef "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper"; then \
+	        rm -f "$$destination"; \
+	    fi; \
+	done; \
+	rm -f "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper" "$(DESTDIR)$(bindir)/jobmarshal"
 installcheck-local:
-	sh "$(abs_top_srcdir)/admin/check-install.sh" "$(MAKE)" "$(prefix)" "$(bindir)" "$(docdir)" "$(man1dir)" "$(libexecdir)"
+	sh "$(abs_top_srcdir)/admin/check-install.sh" "$(MAKE)" "$(prefix)" "$(bindir)" "$(docdir)" \
+	    "$(man1dir)" "$(libexecdir)" '@JOBMARSHAL_WRAPPERS@'

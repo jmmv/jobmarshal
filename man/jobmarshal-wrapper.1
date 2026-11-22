@@ -51,6 +51,36 @@ Stopping the service rejects queued and new independent builds, lets active and
 nested work finish, and waits for all leases and responses before teardown.
 Surviving participants prevent a new pool after a daemon crash.
 Lost native tokens remain unavailable until a safe stop and restart.
+.Sh INSTALLATION
+Configure selects the complete set of installed command basenames with
+.Bd -literal -offset indent
+\&./configure --enable-wrappers='cargo cc mold'
+.Ed
+.Pp
+The default and
+.Fl -disable-wrappers
+install no aliases.
+Names must begin with an ASCII letter or digit and contain only ASCII letters,
+digits, underscores, periods, plus signs, or hyphens.
+The names
+.Nm jobmarshal
+and
+.Nm jobmarshal-wrapper
+are reserved.
+Duplicate names are removed and the selection is sorted.
+Bare
+.Fl -enable-wrappers
+requires a value and fails.
+.Pp
+Aliases are hardlinks from bindir to the wrapper in libexecdir.
+Both directories must support hardlinks on the same filesystem.
+No symlinks or installed link manifest are used.
+Put bindir before the real command locations in
+.Ev PATH .
+Installation refuses unrelated files and symlinks at alias destinations.
+Reinstalling the same selection is safe; uninstall preserves unrelated replacements.
+Before changing the selection, uninstall with the original configuration and
+directory settings, then reconfigure and reinstall.
 .Sh ENVIRONMENT
 .Bl -tag -width JOBMARSHAL_RUNTIME_DIR
 .It Ev JOBMARSHAL_RUNTIME_DIR

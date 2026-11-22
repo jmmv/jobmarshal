@@ -7,6 +7,7 @@ bindir=$3
 docdir=$4
 man1dir=$5
 libexecdir=$6
+wrappers=$7
 stage=$(mktemp -d)
 cleanup() {
     if test -x "$stage$bindir/jobmarshal"; then
@@ -20,6 +21,15 @@ test -x "$stage$bindir/jobmarshal"
 test -f "$stage$man1dir/jobmarshal.1"
 test -x "$stage$libexecdir/jobmarshal-wrapper"
 test -f "$stage$man1dir/jobmarshal-wrapper.1"
+for name in $wrappers; do
+    test ! -L "$stage$bindir/$name"
+    test "$stage$bindir/$name" -ef "$stage$libexecdir/jobmarshal-wrapper"
+done
+# Reinstall checks ownership before the wrapper inode changes.
+"$make_cmd" install DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
+for name in $wrappers; do
+    test "$stage$bindir/$name" -ef "$stage$libexecdir/jobmarshal-wrapper"
+done
 "$stage$bindir/jobmarshal" help > "$stage/stdout" 2> "$stage/stderr"
 grep -F "Jobmarshal home page: https://github.com/jmmv/jobmarshal" "$stage/stdout" >/dev/null
 test ! -s "$stage/stderr"

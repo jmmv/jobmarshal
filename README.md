@@ -77,6 +77,31 @@ same directory settings to remove it.  `make installcheck` verifies installation
 and complete removal in a temporary stage.  The `jobmarshal(1)` and
 `jobmarshal-wrapper(1)` manuals document behavior.
 
+Configure selects the complete set of command wrapper hardlinks.  The default,
+`--disable-wrappers`, and `--enable-wrappers=''` install no aliases.  For example:
+
+```
+../configure --prefix=/usr/local --enable-wrappers='cargo cc mold'
+make install DESTDIR=/path/to/stage
+```
+
+Names must be basenames beginning with an ASCII letter or digit and containing
+only ASCII letters, digits, `_`, `.`, `+`, or `-`.  `jobmarshal` and
+`jobmarshal-wrapper` are reserved.  Names are deduplicated and sorted; bare
+`--enable-wrappers` fails.  No installation-time name list or installed manifest
+is used.  Put the installed bindir before the real commands in PATH to use the
+wrappers.  Bindir and libexecdir must support hardlinks on the same filesystem;
+installation checks this before replacing files and never substitutes symlinks.
+
+Reinstalling with the same selection is safe.  Installation refuses unrelated
+files or symlinks at configured alias destinations.  Uninstall preserves aliases
+that have been replaced by unrelated files or symlinks.  Before changing the
+selection, run `make uninstall` with the original configuration and directory
+settings, then reconfigure and reinstall.  No stale aliases are inferred or
+scanned.  Out-of-tree builds support spaces in the build directory; when the
+source path contains spaces, use an in-tree build because Automake rejects an
+explicit source-directory path containing spaces.
+
 ## Development
 
 Run `cargo build --workspace --locked`, `cargo build --workspace --locked
@@ -91,6 +116,9 @@ maintenance advisory exception for the required daemonize dependency.
 `admin/check-sources.sh` verifies explicit distribution lists.  Render each
 manual with `groff -Tutf8 -mdoc man/jobmarshal.1` (or `mandoc` on FreeBSD).
 Linux and FreeBSD CI exercise builds, staged installation, and source archive
-builds with `make distcheck`.
+builds with `make distcheck`.  `make check` also validates configure selections,
+hardlink ownership and reinstall behavior, unrelated replacements, changed
+selections, paths with spaces, and cross-filesystem failure when a writable
+second filesystem is available.
 
 Copyright 2026 Julio Merino.  Licensed under GPL-3.0-only; see LICENSE.

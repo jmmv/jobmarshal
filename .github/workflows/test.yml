@@ -19,7 +19,7 @@ jobs:
       - run: |
           mkdir build
           cd build
-          ../configure --prefix=/opt/jobmarshal
+          ../configure --prefix=/opt/jobmarshal --enable-wrappers='cargo cc mold'
           make -j4 check
           make installcheck
           make distcheck
@@ -56,7 +56,7 @@ jobs:
             gmake distclean
             mkdir build
             cd build
-            ../configure --prefix=/opt/jobmarshal
+            ../configure --prefix=/opt/jobmarshal --enable-wrappers='cargo cc mold'
             gmake -j4 check
             gmake installcheck
             gmake distcheck

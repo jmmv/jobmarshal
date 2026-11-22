@@ -1,5 +1,7 @@
 # Changes in version 0.1.0
 
+- Select wrapper hardlinks with `configure --enable-wrappers='cargo cc mold'`,
+  including safe reinstall, protected unrelated paths, and staged packaging.
 - Coordinate transparent wrapped builds with FIFO tokens, inherited GNU/Cargo
   allocations, admission leases, draining, and crash-safe pool participation.
 - Install `jobmarshal-wrapper` in libexec with its manual and validate real Cargo
