@@ -209,6 +209,46 @@ fn test_managed_alias_autostart_and_copy() {
 }
 
 #[test]
+fn test_managed_alias_explicit_path_without_path_entry() {
+    let service = Service::new();
+    let root = install(&service);
+    command(&service).args(["add-wrapper", "sh"]).assert().success();
+    let alias = data(&service).join("bin/sh");
+    let path = env::join_paths([root.join("bin"), PathBuf::from("/bin")]).unwrap();
+    for copy in [false, true] {
+        if copy {
+            fs::remove_file(&alias).unwrap();
+            Command::new("cp")
+                .arg(data(&service).join("libexec/jobmarshal-wrapper"))
+                .arg(&alias)
+                .assert()
+                .success();
+        }
+        for invocation in [
+            &alias,
+            &PathBuf::from("data/jobmarshal/bin/sh"),
+            &PathBuf::from("./data/jobmarshal/bin/sh"),
+        ] {
+            Command::new(invocation)
+                .current_dir(service.root.path())
+                .env("PATH", &path)
+                .env("XDG_DATA_HOME", service.root.path().join("data"))
+                .env("JOBMARSHAL_RUNTIME_DIR", &service.runtime)
+                .env("JOBMARSHAL_JOBS", "1")
+                .env_remove("CARGO_MAKEFLAGS")
+                .env_remove("MAKEFLAGS")
+                .env_remove("MFLAGS")
+                .timeout(std::time::Duration::from_secs(25))
+                .args(["-c", "test -n \"$MAKEFLAGS\" && exit 23"])
+                .assert()
+                .code(23);
+            assert!(service.status().contains("jobs=1"));
+            command(&service).arg("stop").assert().success();
+        }
+    }
+}
+
+#[test]
 fn test_path_exports_bytes_quoting_and_idempotence() {
     let service = Service::new();
     let data = service.root.path().join("data ' \" $ ` dir");

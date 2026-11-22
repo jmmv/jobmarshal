@@ -47,8 +47,11 @@ When invoked through a hardlink with another basename, the wrapper searches
 .Ev PATH
 for its own device and inode, skips all its aliases, and executes the next
 executable with that basename.
-For configure-installed aliases, the management command must be at that PATH
-anchor.  Managed per-user aliases locate the management command through PATH.
+If invoked by an explicit path and its identity is absent from
+.Ev PATH ,
+it searches the entire path for the real executable instead.
+For configure-installed aliases, the management command must be in the alias
+directory.  Managed per-user aliases locate the management command through PATH.
 In direct mode, a sibling development
 .Nm jobmarshal
 is preferred; otherwise it is found through PATH.

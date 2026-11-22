@@ -3,7 +3,7 @@
 
 //! Direct commands and identity-based PATH anchors.
 
-use anyhow::{Context, Result, bail, ensure};
+use anyhow::{Context, Result, bail};
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -17,35 +17,49 @@ pub(crate) struct Invocation {
     pub(crate) server: PathBuf,
 }
 
-fn resolve(name: &Path) -> Result<(PathBuf, PathBuf)> {
+fn resolve(invocation: &Path) -> Result<(PathBuf, PathBuf)> {
+    let name = invocation.file_name().context("invalid invocation name")?;
     let identity = fs::metadata(env::current_exe().context("cannot identify running wrapper")?)?;
     let path = env::var_os("PATH").context("PATH is not set")?;
-    let mut anchor = None;
-    for directory in env::split_paths(&path) {
-        let directory =
-            if directory.as_os_str().is_empty() { PathBuf::from(".") } else { directory };
+    let directories: Vec<_> = env::split_paths(&path)
+        .map(
+            |directory| {
+                if directory.as_os_str().is_empty() { PathBuf::from(".") } else { directory }
+            },
+        )
+        .collect();
+    let is_wrapper = |metadata: &fs::Metadata| {
+        identity.dev() == metadata.dev() && identity.ino() == metadata.ino()
+    };
+    let (anchor, start) = if let Some(index) = directories.iter().position(|directory| {
+        fs::metadata(directory.join(name)).is_ok_and(|metadata| is_wrapper(&metadata))
+    }) {
+        (directories[index].clone(), index + 1)
+    } else {
+        // An explicit path identifies the anchor even when its directory is absent from PATH.
+        let anchor = invocation
+            .parent()
+            .filter(|parent| !parent.as_os_str().is_empty())
+            .context("cannot locate this wrapper's identity in PATH")?;
+        (fs::canonicalize(anchor).context("cannot identify wrapper directory")?, 0)
+    };
+    let server =
+        if jobmarshal_common::wrappers::directory().is_ok_and(|root| anchor == root.join("bin")) {
+            PathBuf::from("jobmarshal")
+        } else {
+            anchor.join("jobmarshal")
+        };
+    for directory in &directories[start..] {
         let candidate = directory.join(name);
         let Ok(metadata) = fs::metadata(&candidate) else { continue };
-        if identity.dev() == metadata.dev() && identity.ino() == metadata.ino() {
-            if anchor.is_none() {
-                anchor = Some(directory);
-            }
-        } else if metadata.is_file()
+        if !is_wrapper(&metadata)
+            && metadata.is_file()
             && metadata.permissions().mode() & 0o111 != 0
-            && let Some(anchor) = &anchor
         {
-            let server = if jobmarshal_common::wrappers::directory()
-                .is_ok_and(|root| anchor == &root.join("bin"))
-            {
-                PathBuf::from("jobmarshal")
-            } else {
-                anchor.join("jobmarshal")
-            };
             return Ok((candidate, server));
         }
     }
-    ensure!(anchor.is_some(), "cannot locate this wrapper's identity in PATH");
-    bail!("no real {} executable after the wrapper in PATH", name.display())
+    bail!("no real {} executable after the wrapper in PATH", name.to_string_lossy())
 }
 
 pub(crate) fn parse() -> Result<Invocation> {
@@ -58,7 +72,7 @@ pub(crate) fn parse() -> Result<Invocation> {
         let server = if sibling.is_file() { sibling } else { PathBuf::from("jobmarshal") };
         (command.clone(), PathBuf::from(command), server)
     } else {
-        let (executable, server) = resolve(Path::new(name))?;
+        let (executable, server) = resolve(Path::new(&arg0))?;
         (arg0, executable, server)
     };
     Ok(Invocation { arg0, arguments: args.collect(), executable, server })
