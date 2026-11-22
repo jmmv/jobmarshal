@@ -3,7 +3,7 @@
 
 //! Build admission and exact lease cleanup.
 
-use crate::pool::Pool;
+use crate::{accounting::Accounting, pool::Pool};
 use anyhow::{Result, bail};
 use jobmarshal_common::protocol::{Response, send};
 use nix::errno::Errno;
@@ -16,6 +16,7 @@ use std::thread;
 use std::time::Duration;
 
 pub(crate) struct State {
+    pub(crate) accounting: Accounting,
     pub(crate) active: usize,
     pub(crate) draining: bool,
     pub(crate) pool: Pool,
@@ -38,6 +39,7 @@ impl Drop for Waiting<'_> {
 }
 
 struct Lease {
+    granted: bool,
     shared: Shared,
     token: u8,
 }
@@ -45,10 +47,15 @@ struct Lease {
 impl Drop for Lease {
     fn drop(&mut self) {
         let mut state = self.shared.lock().unwrap();
-        if let Err(error) = state.pool.put(self.token) {
+        let outcome = state.pool.put(self.token);
+        state.active -= 1;
+        if self.granted {
+            state.accounting.complete();
+        }
+        drop(state);
+        if let Err(error) = outcome {
             eprintln!("cannot return implicit job token: {error}");
         }
-        state.active -= 1;
     }
 }
 
@@ -66,7 +73,7 @@ fn disconnected(stream: &UnixStream) -> Result<bool> {
 pub(crate) fn acquire(stream: &mut UnixStream, shared: &Shared) -> Result<()> {
     shared.lock().unwrap().waiting += 1;
     let mut waiting = Waiting { shared, queued: true };
-    let lease = loop {
+    let mut lease = loop {
         if disconnected(stream)? {
             return Ok(());
         }
@@ -82,7 +89,7 @@ pub(crate) fn acquire(stream: &mut UnixStream, shared: &Shared) -> Result<()> {
             state.waiting -= 1;
             waiting.queued = false;
             state.active += 1;
-            break Lease { shared: Arc::clone(shared), token };
+            break Lease { granted: false, shared: Arc::clone(shared), token };
         }
         drop(state);
         thread::sleep(Duration::from_millis(5));
@@ -90,6 +97,7 @@ pub(crate) fn acquire(stream: &mut UnixStream, shared: &Shared) -> Result<()> {
     drop(waiting);
     let fifo = shared.lock().unwrap().pool.fifo.clone();
     send(stream, Response::Granted { fifo })?;
+    lease.granted = true;
     stream.set_read_timeout(None)?;
     let mut bytes = [0; 256];
     loop {
@@ -102,4 +110,41 @@ pub(crate) fn acquire(stream: &mut UnixStream, shared: &Shared) -> Result<()> {
     }
     drop(lease);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{State, acquire};
+    use crate::{accounting::Accounting, pool::Pool};
+    use jobmarshal_common::runtime::Paths;
+    use std::net::Shutdown;
+    use std::os::unix::net::UnixStream;
+    use std::sync::{Arc, Mutex};
+    use std::time::SystemTime;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_failed_grant_returns_token_without_processing_build() {
+        let root = tempdir().unwrap();
+        let paths = Paths::prepare(root.path().join("runtime")).unwrap();
+        let pool = Pool::create(&paths, 1).unwrap();
+        let accounting = Accounting::new(paths.socket(), SystemTime::now());
+        let shared = Arc::new(Mutex::new(State {
+            accounting,
+            active: 0,
+            draining: false,
+            pool,
+            waiting: 0,
+        }));
+        let (client, mut server) = UnixStream::pair().unwrap();
+        client.shutdown(Shutdown::Read).unwrap();
+        assert!(acquire(&mut server, &shared).is_err());
+        let state = shared.lock().unwrap();
+        assert_eq!(0, state.active);
+        assert_eq!(0, state.waiting);
+        let snapshot =
+            state.accounting.snapshot(&state.pool, state.active, state.draining).unwrap();
+        assert_eq!(1, snapshot.available);
+        assert_eq!(0, snapshot.processed_builds);
+    }
 }

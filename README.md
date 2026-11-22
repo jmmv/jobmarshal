@@ -12,6 +12,8 @@ Issues: <https://github.com/jmmv/jobmarshal/issues>
 eval "$(jobmarshal start -j 8)"
 jobmarshal status
 /usr/local/libexec/jobmarshal-wrapper cargo build
+jobmarshal stats
+jobmarshal stats --zero
 jobmarshal stop
 ```
 
@@ -38,6 +40,18 @@ make and Cargo clients use the remaining FIFO tokens.  The lease survives exec
 and descendants, returning its token when its last descriptor closes.  Surviving
 participants prevent replacement of a crashed daemon's pool.  Lost native tokens
 reduce capacity conservatively until a safe stop and restart.
+
+`jobmarshal stats` reports the socket, FIFO, PID, UTC RFC3339 start/reset times,
+maximum jobs, available/unavailable tokens, active/processed builds, and
+draining state.  It does not start an absent daemon.  `stats --zero` resets the
+processed count and reset time before printing; active builds count when their
+leases later end, including failed commands.  Queued requests that never receive
+admission do not count.  Restart resets all in-memory statistics.
+
+Token counts are snapshots collected without consuming tokens or changing native
+descriptor flags.  Unavailable tokens include implicit build reservations, native
+token holders, and lost tokens; they are not process or thread counts.  Job demand
+and wait duration are not measured.
 
 The installed `libexec/jobmarshal-wrapper COMMAND [ARG ...]` provides direct
 execution.  Hardlinks with other basenames search PATH for their own inode and
@@ -110,8 +124,8 @@ Always build the workspace binaries before running tests: integration tests
 exercise both executables.  Tests use isolated runtime directories and daemon
 cleanup guards, including real concurrent Cargo workspaces with synchronized
 build-script activity.  Install prek 0.5.3, cargo-machete 0.9.2, ShellCheck, and
-cargo-audit 0.22.2.  Run `prek run --all-files` (or `make lint`) and `cargo audit
--D warnings` before submitting changes.  `.cargo/audit.toml` records the
+cargo-audit 0.22.2.  Run `prek run --all-files` (or `make lint`) and `cargo
+audit -D warnings` before submitting changes.  `.cargo/audit.toml` records the
 maintenance advisory exception for the required daemonize dependency.
 `admin/check-sources.sh` verifies explicit distribution lists.  Render each
 manual with `groff -Tutf8 -mdoc man/jobmarshal.1` (or `mandoc` on FreeBSD).

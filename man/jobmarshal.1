@@ -14,6 +14,9 @@
 .Cm start
 .Op Fl j Ar N | Fl -jobs Ar N
 .Nm
+.Cm stats
+.Op Fl -zero
+.Nm
 .Cm status
 .Nm
 .Cm stop
@@ -58,6 +61,27 @@ rejects queued and new independent builds, waits for active builds to finish,
 then acknowledges the request before complete teardown.
 Nested wrappers may finish using their inherited allocation while draining.
 Stable lock files remain in the runtime directory after shutdown.
+.Ss Statistics
+.Cm stats
+reports the listening socket, token FIFO, daemon PID, UTC start and reset
+timestamps, maximum jobs, available and unavailable tokens, active builds,
+processed builds, and draining state.
+Timestamps use UTC RFC3339 format.
+The command does not start an absent service.
+.Pp
+Processed builds count admitted leases when they end, including failed commands.
+Queued requests that never receive admission do not count.
+.Fl -zero
+resets the processed count and reset timestamp before printing the snapshot.
+It preserves the start timestamp, active builds, and token state.
+Builds active during reset count when they subsequently finish.
+All statistics remain in memory and restart resets them.
+.Pp
+Token counts are observations that can change immediately after collection.
+Unavailable tokens include implicit build reservations, native token holders,
+and tokens lost by native clients; they do not measure processes or threads.
+Job demand and wait duration are not measured.
+Statistics observe the FIFO without consuming tokens or changing descriptor flags.
 .Ss Runtime directory
 The runtime directory is selected from
 .Ev JOBMARSHAL_RUNTIME_DIR ,
@@ -94,6 +118,7 @@ XDG runtime base directory, accessed through the XDG library.
 The
 .Cm help ,
 .Cm start ,
+.Cm stats ,
 .Cm stop ,
 and
 .Cm version

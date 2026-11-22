@@ -3,6 +3,7 @@
 
 //! Versioned newline-delimited control frames.
 
+use crate::stats::Stats;
 use anyhow::{Result, ensure};
 use nix::poll::{PollFd, PollFlags, poll};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -22,6 +23,11 @@ pub const TIMEOUT: Duration = Duration::from_secs(3);
 pub enum Request {
     /// Reserve one implicit job slot and keep the connection as its lease.
     Acquire,
+    /// Observe service statistics, optionally resetting cumulative accounting first.
+    Stats {
+        /// Whether to reset completed builds and the reset timestamp.
+        zero: bool,
+    },
     /// Inspect the responsive daemon.
     Status,
     /// Stop the daemon and acknowledge before teardown.
@@ -38,6 +44,8 @@ pub enum Response {
         /// Native GNU jobserver FIFO authentication path.
         fifo: PathBuf,
     },
+    /// An in-memory service observation.
+    Stats(Stats),
     /// Current service state.
     Status {
         /// Number of admitted builds.

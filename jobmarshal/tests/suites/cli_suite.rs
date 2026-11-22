@@ -11,6 +11,7 @@ const HELP: &str = r#"Usage: jobmarshal command [arg...]
 Commands:
     help                show command-line usage information
     start               start the per-user jobmarshal
+    stats               inspect in-memory jobmarshal statistics
     status              inspect the per-user jobmarshal
     stop                stop the per-user jobmarshal
     version             show version information
@@ -72,4 +73,16 @@ fn test_help_unknown_command() {
         "Usage error: Unknown command `--invalid`\n\
         Type `jobmarshal help` or `man 1 jobmarshal` for more information\n",
     );
+}
+
+#[test]
+fn test_stats_help_and_invalid_options() {
+    let (mut command, directory) = jobmarshal();
+    let output =
+        command.args(["help", "stats"]).assert().success().stderr("").get_output().stdout.clone();
+    assert!(String::from_utf8(output).unwrap().contains("--zero"));
+    assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
+    let (mut command, directory) = jobmarshal();
+    command.args(["stats", "--invalid"]).assert().code(2).stdout("");
+    assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
 }

@@ -3,6 +3,7 @@
 
 //! Control service and synchronized teardown.
 
+use crate::accounting::Accounting;
 use crate::admission::{self, Shared, State};
 use crate::pool::Pool;
 use anyhow::{Context, Result, ensure};
@@ -14,7 +15,7 @@ use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 pub(crate) fn listen(paths: &Paths) -> Result<UnixListener> {
     match fs::symlink_metadata(paths.socket()) {
@@ -44,6 +45,16 @@ fn handle(mut stream: UnixStream, shared: Shared) -> Result<()> {
     };
     let response = match request {
         Request::Acquire => return admission::acquire(&mut stream, &shared),
+        Request::Stats { zero } => {
+            let mut state = shared.lock().unwrap();
+            if zero {
+                state.accounting.reset(SystemTime::now());
+            }
+            match state.accounting.snapshot(&state.pool, state.active, state.draining) {
+                Ok(stats) => Response::Stats(stats),
+                Err(error) => Response::Error(format!("cannot collect statistics: {error:#}")),
+            }
+        }
         Request::Status => {
             let state = shared.lock().unwrap();
             Response::Status {
@@ -71,7 +82,9 @@ fn handle(mut stream: UnixStream, shared: Shared) -> Result<()> {
 }
 
 pub(crate) fn run(paths: &Paths, listener: UnixListener, _owner: File, pool: Pool) -> Result<()> {
-    let shared = Arc::new(Mutex::new(State { active: 0, draining: false, pool, waiting: 0 }));
+    let accounting = Accounting::new(paths.socket(), SystemTime::now());
+    let shared =
+        Arc::new(Mutex::new(State { accounting, active: 0, draining: false, pool, waiting: 0 }));
     let mut handlers = Vec::new();
     let outcome = loop {
         let state = shared.lock().unwrap();

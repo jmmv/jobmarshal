@@ -3,8 +3,10 @@
 
 //! Command-line support for Jobmarshal.
 
+mod accounting;
 mod admission;
 pub mod cli;
 mod daemon;
 mod lifecycle;
 mod pool;
+mod stats;

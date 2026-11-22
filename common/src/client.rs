@@ -5,6 +5,7 @@
 
 use crate::protocol::{Request, Response, TIMEOUT, receive, send};
 use crate::runtime::Paths;
+use crate::stats::Stats;
 use anyhow::{Context, Result, bail, ensure};
 use nix::errno::Errno;
 use nix::poll::{PollFd, PollFlags, poll};
@@ -84,6 +85,17 @@ pub fn connect(paths: &Paths) -> Result<Option<UnixStream>> {
             Ok(None)
         }
         Err(error) => Err(error).context("cannot connect to jobmarshal"),
+    }
+}
+
+/// Requests statistics without starting a daemon.
+pub fn stats(paths: &Paths, zero: bool) -> Result<Stats> {
+    let mut stream = connect(paths)?.context("jobmarshal is not running")?;
+    send(&mut stream, Request::Stats { zero })?;
+    match receive(&mut stream)? {
+        Response::Stats(stats) => Ok(stats),
+        Response::Error(error) => bail!("{error}"),
+        response => bail!("unexpected stats response: {response:?}"),
     }
 }
 

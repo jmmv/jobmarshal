@@ -41,6 +41,10 @@ grep -F 'jobs=2 active_builds=0 waiting_builds=0 draining=false' "$stage/stdout"
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" JOBMARSHAL_JOBS=2 \
     CARGO_MAKEFLAGS='' MAKEFLAGS='' MFLAGS='' \
     PATH="$stage$bindir:$PATH" "$stage$libexecdir/jobmarshal-wrapper" sh -c 'exit 0'
+JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stats > "$stage/stdout"
+grep -F 'Max jobs              2' "$stage/stdout" >/dev/null
+grep -F 'Token counts are a snapshot;' "$stage/stdout" >/dev/null
+JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stats --zero > "$stage/stdout"
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop
 test ! -e "$stage/runtime/control.sock"
 rm -rf "$stage/runtime"

@@ -3,10 +3,11 @@
 
 //! Application metadata and command-line dispatch.
 
-use crate::lifecycle;
+use crate::{lifecycle, stats};
 use getoptsargs::prelude::*;
 use jobmarshal_common::{capacity, client, protocol::Response, runtime::Paths};
 use std::env;
+use std::io;
 
 fn no_options(builder: CommandBuilder) -> CommandBuilder {
     builder
@@ -14,6 +15,10 @@ fn no_options(builder: CommandBuilder) -> CommandBuilder {
 
 fn start_options(builder: CommandBuilder) -> CommandBuilder {
     builder.optopt("j", "jobs", "shared job capacity (default: available CPUs)", "N")
+}
+
+fn stats_options(builder: CommandBuilder) -> CommandBuilder {
+    builder.optflag("", "zero", "reset statistics before printing them")
 }
 
 fn start(_app: Matches, command: Matches) -> Result<i32> {
@@ -24,6 +29,12 @@ fn start(_app: Matches, command: Matches) -> Result<i32> {
         "export JOBMARSHAL_RUNTIME_DIR='{}'",
         paths.directory.to_str().unwrap().replace('\'', "'\\''")
     );
+    Ok(0)
+}
+
+fn stats(_app: Matches, command: Matches) -> Result<i32> {
+    let snapshot = client::stats(&Paths::discover()?, command.opt_present("zero"))?;
+    stats::print(&mut io::stdout().lock(), &snapshot)?;
     Ok(0)
 }
 
@@ -55,6 +66,7 @@ pub fn main() -> i32 {
         .homepage(env!("CARGO_PKG_REPOSITORY"))
         .manpage("jobmarshal", "1")
         .cmd("start", "start the per-user jobmarshal", start_options, start)
+        .cmd("stats", "inspect in-memory jobmarshal statistics", stats_options, stats)
         .cmd("status", "inspect the per-user jobmarshal", no_options, status)
         .cmd("stop", "stop the per-user jobmarshal", no_options, stop)
         .run(command_dispatcher)
