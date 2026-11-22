@@ -11,3 +11,10 @@ description = "Per-user build coordination"
 
 [lints]
 workspace = true
+
+[dependencies]
+getoptsargs.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+tempfile.workspace = true

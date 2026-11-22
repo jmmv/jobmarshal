@@ -24,3 +24,8 @@ unsafe_code = "warn"
 [workspace.lints.clippy]
 await_holding_refcell_ref = "allow"
 collapsible_else_if = "allow"
+
+[workspace.dependencies]
+assert_cmd = "2"
+getoptsargs = "0.4"
+tempfile = "3"

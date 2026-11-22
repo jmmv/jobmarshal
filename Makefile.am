@@ -2,8 +2,10 @@
 AUTOMAKE_OPTIONS = no-dependencies
 
 dist_doc_DATA = LICENSE NEWS.md README.md
-rust_sources = jobmarshal/src/main.rs
-rust_tests =
+dist_man1_MANS = man/jobmarshal.1
+rust_sources = jobmarshal/src/main.rs jobmarshal/src/lib.rs jobmarshal/src/cli.rs
+rust_tests = jobmarshal/tests/integration_test.rs jobmarshal/tests/common/mod.rs \
+	jobmarshal/tests/suites/mod.rs jobmarshal/tests/suites/cli_suite.rs
 rust_manifests = Cargo.toml jobmarshal/Cargo.toml
 EXTRA_DIST = $(rust_sources) $(rust_tests) $(rust_manifests) Cargo.lock \
 	rust-toolchain.toml rustfmt.toml prek.toml .gitignore \
@@ -34,4 +36,4 @@ install-exec-local: release
 uninstall-local:
 	rm -f "$(DESTDIR)$(bindir)/jobmarshal"
 installcheck-local:
-	sh "$(abs_top_srcdir)/admin/check-install.sh" "$(MAKE)" "$(prefix)" "$(bindir)" "$(docdir)"
+	sh "$(abs_top_srcdir)/admin/check-install.sh" "$(MAKE)" "$(prefix)" "$(bindir)" "$(docdir)" "$(man1dir)"

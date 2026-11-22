@@ -1,0 +1,45 @@
+.\" Copyright 2026 Julio Merino.
+.\" SPDX-License-Identifier: GPL-3.0-only
+.Dd November 21, 2026
+.Dt JOBMARSHAL 1
+.Os
+.Sh NAME
+.Nm jobmarshal
+.Nd per-user build coordination
+.Sh SYNOPSIS
+.Nm
+.Cm help
+.Nm
+.Cm version
+.Nm
+.Op Fl h | Fl -help | Fl -version
+.Sh DESCRIPTION
+.Nm
+provides command-line information for the Jobmarshal project.
+With no arguments, it exits successfully without output.
+.Ss The help command
+The
+.Cm help
+command prints usage information, available commands, and the homepage.
+The
+.Fl h
+and
+.Fl -help
+options provide the same information.
+.Ss The version command
+The
+.Cm version
+command prints the version and copyright information.
+The
+.Fl -version
+option provides the same information.
+.Sh EXIT STATUS
+.Ex -std
+Invalid arguments produce exit status 2.
+.Sh SEE ALSO
+The project homepage is
+.Lk https://github.com/jmmv/jobmarshal .
+Report issues at
+.Lk https://github.com/jmmv/jobmarshal/issues .
+.Sh AUTHORS
+.An Julio Merino Aq Mt julio@meroh.net

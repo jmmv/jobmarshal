@@ -1,16 +1,18 @@
 # Jobmarshal
 
 Jobmarshal is a per-user build coordination project for Linux and FreeBSD.
-This release establishes the build infrastructure.  The `jobmarshal` executable
-currently exits successfully without output.
+The `jobmarshal help` and `jobmarshal version` commands display command-line
+usage and version information.  With no arguments, `jobmarshal` exits
+successfully without output.  See jobmarshal(1) for details.
 
 Homepage: <https://github.com/jmmv/jobmarshal>
 Issues: <https://github.com/jmmv/jobmarshal/issues>
 
 ## Build and install
 
-Install Rust 1.100 through rustup, Autoconf 2.69 or newer, and Automake 1.16
-or newer.  On FreeBSD use GNU make (`gmake`) for the commands below.
+Install Rust 1.100 through rustup, Autoconf 2.69 or newer, Automake 1.16
+or newer, and groff to render the manual.  On FreeBSD use GNU make (`gmake`)
+for the commands below.
 
 ```
 autoreconf -is
@@ -28,10 +30,11 @@ make install
 executable.  Cargo uses a build-local target directory, including when building
 outside the source tree.  `make clean` removes Cargo outputs.
 
-Installation respects `--bindir`, `--docdir`, and other normal configure directory
-options.  Use `make install DESTDIR=/path/to/stage` to stage an installation and
-`make uninstall` with the same directory settings to remove it.  `make
-installcheck` verifies installation and complete removal in a temporary stage.
+Installation respects `--bindir`, `--docdir`, `--mandir`, and other normal
+configure directory options.  Use `make install DESTDIR=/path/to/stage` to stage
+an installation and `make uninstall` with the same directory settings to remove
+it.  `make installcheck` verifies installation and complete removal in a temporary
+stage.
 
 ## Development
 
