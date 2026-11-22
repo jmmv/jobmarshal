@@ -12,6 +12,7 @@ Commands:
     add-wrapper         install a per-user command wrapper
     help                show command-line usage information
     list-wrappers       list per-user command wrappers
+    print-env           print client environment assignments
     remove-wrapper      remove a per-user command wrapper
     run                 run a command with the shared job budget
     start               start the per-user jobmarshal

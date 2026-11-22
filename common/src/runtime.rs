@@ -21,6 +21,11 @@ pub struct Paths {
 impl Paths {
     /// Discovers a runtime directory using the application override or XDG API.
     pub fn discover() -> Result<Self> {
+        Self::prepare(Self::locate()?)
+    }
+
+    /// Locates the runtime path without creating it or accessing daemon state.
+    pub fn locate() -> Result<PathBuf> {
         let directory = match env::var_os("JOBMARSHAL_RUNTIME_DIR") {
             Some(directory) => PathBuf::from(directory),
             None => runtime_directory(
@@ -28,19 +33,12 @@ impl Paths {
                 Uid::current().as_raw(),
             ),
         };
-        Self::prepare(directory)
+        normalize(directory)
     }
 
     /// Creates and validates a chosen final path, regardless of discovery method.
     pub fn prepare(directory: PathBuf) -> Result<Self> {
-        ensure!(directory.is_absolute(), "runtime directory must be absolute");
-        // Strip trailing separators and dots before lstat, which otherwise follows a final link.
-        let directory: PathBuf = directory.components().collect();
-        let text = directory.to_str().context("runtime directory must be UTF-8")?;
-        ensure!(
-            !text.chars().any(char::is_whitespace),
-            "runtime directory cannot contain whitespace"
-        );
+        let directory = normalize(directory)?;
         match DirBuilder::new().mode(0o700).create(&directory) {
             Ok(()) => {}
             Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
@@ -54,6 +52,15 @@ impl Paths {
     pub fn socket(&self) -> PathBuf {
         self.directory.join("control.sock")
     }
+}
+
+fn normalize(directory: PathBuf) -> Result<PathBuf> {
+    ensure!(directory.is_absolute(), "runtime directory must be absolute");
+    // Strip trailing separators and dots before lstat, which otherwise follows a final link.
+    let directory: PathBuf = directory.components().collect();
+    let text = directory.to_str().context("runtime directory must be UTF-8")?;
+    ensure!(!text.chars().any(char::is_whitespace), "runtime directory cannot contain whitespace");
+    Ok(directory)
 }
 
 fn validate(directory: &Path) -> Result<()> {

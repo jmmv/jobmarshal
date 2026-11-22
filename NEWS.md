@@ -1,5 +1,8 @@
 # Changes in version 0.1.0
 
+- Add `jobmarshal print-env` to print shell environment exports without starting
+  the daemon or creating application directories.
+
 - Prefer per-user `add-wrapper`, `list-wrappers`, and `remove-wrapper` commands
   with XDG data storage, a private wrapper copy, automatic refresh on new daemon
   launches, and idempotent PATH exports from `start`.

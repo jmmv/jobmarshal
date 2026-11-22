@@ -7,6 +7,7 @@ mod accounting;
 mod admission;
 pub mod cli;
 mod daemon;
+mod environment;
 mod lifecycle;
 mod pool;
 mod run;

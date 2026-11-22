@@ -112,6 +112,16 @@ status 125.  Flags without authentication are allowed.  All three native flag
 variables retain unrelated options.  The native library selects the first
 present variable from CARGO_MAKEFLAGS, MAKEFLAGS, and MFLAGS.
 
+## Session initialization
+
+`jobmarshal print-env` prints shell-quoted runtime-directory and PATH exports
+without starting the daemon, creating directories, or refreshing wrappers.
+It shares runtime discovery and idempotent PATH behavior with `start`:
+
+```
+eval "$(jobmarshal print-env)"
+```
+
 ## Build and install
 
 Install Rust 1.100 through rustup, Autoconf 2.69 or newer, and Automake 1.16
