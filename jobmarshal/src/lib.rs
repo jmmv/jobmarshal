@@ -9,4 +9,5 @@ pub mod cli;
 mod daemon;
 mod lifecycle;
 mod pool;
+mod run;
 mod stats;

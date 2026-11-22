@@ -5,4 +5,5 @@ mod admission_suite;
 mod cargo_suite;
 mod execution_suite;
 mod native_suite;
+mod run_suite;
 mod stats_suite;

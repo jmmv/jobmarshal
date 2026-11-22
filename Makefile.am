@@ -10,7 +10,7 @@ rust_sources = jobmarshal/src/main.rs jobmarshal/src/lib.rs jobmarshal/src/cli.r
 	jobmarshal/src/admission.rs jobmarshal/src/pool.rs wrapper/src/main.rs \
 	wrapper/src/lib.rs wrapper/src/admission.rs wrapper/src/execution.rs \
 	wrapper/src/inherited.rs wrapper/src/invocation.rs common/src/stats.rs \
-	jobmarshal/src/accounting.rs jobmarshal/src/stats.rs
+	jobmarshal/src/accounting.rs jobmarshal/src/stats.rs jobmarshal/src/run.rs
 rust_tests = jobmarshal/tests/integration_test.rs jobmarshal/tests/common/mod.rs \
 	jobmarshal/tests/suites/mod.rs jobmarshal/tests/suites/cli_suite.rs \
 	jobmarshal/tests/common/service.rs jobmarshal/tests/suites/lifecycle_suite.rs \
@@ -18,7 +18,8 @@ rust_tests = jobmarshal/tests/integration_test.rs jobmarshal/tests/common/mod.rs
 	wrapper/tests/suites/mod.rs wrapper/tests/suites/admission_suite.rs \
 	wrapper/tests/suites/cargo_suite.rs wrapper/tests/suites/execution_suite.rs \
 	wrapper/tests/suites/native_suite.rs wrapper/tests/fixtures/native.rs \
-	wrapper/tests/fixtures/build.rs wrapper/tests/suites/stats_suite.rs
+	wrapper/tests/fixtures/build.rs wrapper/tests/suites/stats_suite.rs \
+	wrapper/tests/suites/run_suite.rs
 rust_manifests = Cargo.toml common/Cargo.toml jobmarshal/Cargo.toml wrapper/Cargo.toml
 EXTRA_DIST = $(rust_sources) $(rust_tests) $(rust_manifests) Cargo.lock \
 	rust-toolchain.toml rustfmt.toml prek.toml .gitignore .cargo/audit.toml \

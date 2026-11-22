@@ -3,7 +3,7 @@
 
 //! Application metadata and command-line dispatch.
 
-use crate::{lifecycle, stats};
+use crate::{lifecycle, run, stats};
 use getoptsargs::prelude::*;
 use jobmarshal_common::{capacity, client, protocol::Response, runtime::Paths};
 use std::env;
@@ -61,10 +61,14 @@ fn stop(_app: Matches, _command: Matches) -> Result<i32> {
 
 /// Runs the command-line application and returns its exit status.
 pub fn main() -> i32 {
+    if let Some(status) = run::intercept() {
+        return status;
+    }
     Builder::new("Jobmarshal", env!("CARGO_PKG_VERSION"), env::args())
         .copyright("Copyright 2026 Julio Merino")
         .homepage(env!("CARGO_PKG_REPOSITORY"))
         .manpage("jobmarshal", "1")
+        .cmd("run", "run a command with the shared job budget", run::options, run::dispatch)
         .cmd("start", "start the per-user jobmarshal", start_options, start)
         .cmd("stats", "inspect in-memory jobmarshal statistics", stats_options, stats)
         .cmd("status", "inspect the per-user jobmarshal", no_options, status)

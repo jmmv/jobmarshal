@@ -13,6 +13,11 @@
 .Sh DESCRIPTION
 .Nm
 transparently executes a command on Linux and FreeBSD.
+The
+.Cm run
+command of
+.Xr jobmarshal 1
+provides explicit execution through this wrapper without requiring aliases.
 It preserves arguments, environment, working directory, standard streams,
 exit status, and signals by replacing itself with the command.
 .Pp
@@ -81,6 +86,12 @@ Installation refuses unrelated files and symlinks at alias destinations.
 Reinstalling the same selection is safe; uninstall preserves unrelated replacements.
 Before changing the selection, uninstall with the original configuration and
 directory settings, then reconfigure and reinstall.
+.Pp
+.Cm jobmarshal run
+finds this wrapper at
+.Pa ../libexec/jobmarshal-wrapper
+relative to the management executable.
+Preserve this layout when customizing directories or relocating an installation.
 .Sh ENVIRONMENT
 .Bl -tag -width JOBMARSHAL_RUNTIME_DIR
 .It Ev JOBMARSHAL_RUNTIME_DIR

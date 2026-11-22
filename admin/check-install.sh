@@ -41,6 +41,26 @@ grep -F 'jobs=2 active_builds=0 waiting_builds=0 draining=false' "$stage/stdout"
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" JOBMARSHAL_JOBS=2 \
     CARGO_MAKEFLAGS='' MAKEFLAGS='' MFLAGS='' \
     PATH="$stage$bindir:$PATH" "$stage$libexecdir/jobmarshal-wrapper" sh -c 'exit 0'
+check_run() {
+    if test "$stage$bindir/../libexec/jobmarshal-wrapper" -ef \
+        "$stage$libexecdir/jobmarshal-wrapper"; then
+        run_layout=yes
+        JOBMARSHAL_RUNTIME_DIR="$stage/runtime" JOBMARSHAL_JOBS=2 \
+            CARGO_MAKEFLAGS='' MAKEFLAGS='' MFLAGS='' \
+            PATH="$stage$bindir:$PATH" "$stage$bindir/jobmarshal" run -- sh -c 'exit 0'
+    else
+        run_layout=no
+        if JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" run sh -c 'exit 0' \
+            > "$stage/stdout" 2> "$stage/stderr"; then
+            echo 'Run unexpectedly accepted a broken relative installation layout' >&2
+            exit 1
+        else
+            test "$?" -eq 1
+        fi
+        grep -F 'cannot execute wrapper' "$stage/stderr" > /dev/null
+    fi
+}
+check_run
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stats > "$stage/stdout"
 grep -F 'Max jobs              2' "$stage/stdout" >/dev/null
 grep -F 'Token counts are a snapshot;' "$stage/stdout" >/dev/null
@@ -49,6 +69,16 @@ JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop
 test ! -e "$stage/runtime/control.sock"
 rm -rf "$stage/runtime"
 rm "$stage/stdout" "$stage/stderr"
+relocated=$(mktemp -d)
+rmdir "$relocated"
+mv "$stage" "$relocated"
+stage=$relocated
+check_run
+if test "$run_layout" = yes; then
+    JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop
+fi
+rm -rf "$stage/runtime"
+rm -f "$stage/stdout" "$stage/stderr"
 for file in LICENSE NEWS.md README.md; do
     test -f "$stage$docdir/$file"
 done

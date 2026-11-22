@@ -10,6 +10,7 @@ const HELP: &str = r#"Usage: jobmarshal command [arg...]
 
 Commands:
     help                show command-line usage information
+    run                 run a command with the shared job budget
     start               start the per-user jobmarshal
     stats               inspect in-memory jobmarshal statistics
     status              inspect the per-user jobmarshal
@@ -84,5 +85,17 @@ fn test_stats_help_and_invalid_options() {
     assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
     let (mut command, directory) = jobmarshal();
     command.args(["stats", "--invalid"]).assert().code(2).stdout("");
+    assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
+}
+
+#[test]
+fn test_run_help_without_runtime_access() {
+    let (mut command, directory) = jobmarshal();
+    let output =
+        command.args(["help", "run"]).assert().success().stderr("").get_output().stdout.clone();
+    let help = String::from_utf8(output).unwrap();
+    assert!(help.contains("COMMAND"));
+    assert!(help.contains("ARG"));
+    assert!(help.contains("optional --"));
     assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
 }

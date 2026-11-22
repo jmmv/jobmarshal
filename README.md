@@ -11,7 +11,7 @@ Issues: <https://github.com/jmmv/jobmarshal/issues>
 ```
 eval "$(jobmarshal start -j 8)"
 jobmarshal status
-/usr/local/libexec/jobmarshal-wrapper cargo build
+jobmarshal run cargo build
 jobmarshal stats
 jobmarshal stats --zero
 jobmarshal stop
@@ -34,6 +34,13 @@ by the user, and inaccessible to group/others.  Symlink directories and unsafe
 lock or log files are rejected.  Stable lock files remain after shutdown.
 Ordinary control connections and reads/writes have bounded deadlines.  Admission
 and draining can wait as long as a build needs.
+
+`jobmarshal run [--] COMMAND [ARG ...]` executes a command through the shared
+budget, autostarting the service if needed.  An optional `--` can precede
+COMMAND; all options and arguments after COMMAND belong to the child, including
+non-UTF-8 arguments.  It preserves the working directory, environment, standard
+streams, exit status, and signals.  Missing COMMAND returns 2; a missing or
+unexecutable wrapper returns 1; wrapper setup failures return 125.
 
 Each independent build reserves one token for its implicit slot; native GNU
 make and Cargo clients use the remaining FIFO tokens.  The lease survives exec
@@ -115,6 +122,14 @@ settings, then reconfigure and reinstall.  No stale aliases are inferred or
 scanned.  Out-of-tree builds support spaces in the build directory; when the
 source path contains spaces, use an in-tree build because Automake rejects an
 explicit source-directory path containing spaces.
+
+`jobmarshal run` locates `../libexec/jobmarshal-wrapper` relative to the
+management executable.  This relative layout intentionally supports moving an
+installation.  Custom bindir and libexecdir settings must preserve that
+relationship, for example `--bindir=/opt/tools/bin
+--libexecdir=/opt/tools/libexec`.  Keep the installed bindir in PATH so the
+wrapper can find `jobmarshal` when autostarting.  No alias installation is
+required to use `run`.
 
 ## Development
 

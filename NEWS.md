@@ -1,5 +1,7 @@
 # Changes in version 0.1.0
 
+- Add `jobmarshal run [--] COMMAND [ARG ...]` with transparent OS-string command
+  execution, shared admission, and a relocatable bin/libexec installation layout.
 - Add `jobmarshal stats` and `stats --zero` with observational native token counts,
   UTC timestamps, completed-build accounting, and in-memory reset semantics.
 - Select wrapper hardlinks with `configure --enable-wrappers='cargo cc mold'`,

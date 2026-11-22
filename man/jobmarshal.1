@@ -11,6 +11,11 @@
 .Cm help
 .Op Ar command
 .Nm
+.Cm run
+.Op Fl -
+.Ar COMMAND
+.Op Ar ARG ...
+.Nm
 .Cm start
 .Op Fl j Ar N | Fl -jobs Ar N
 .Nm
@@ -30,6 +35,27 @@ The
 and
 .Cm version
 commands print command-line information without accessing service configuration.
+.Ss Running commands
+.Cm run
+executes COMMAND through the installed wrapper and shared job budget,
+autostarting the service if necessary.
+An optional
+.Fl -
+may precede COMMAND.
+Options and arguments after COMMAND belong to the child and are passed unchanged,
+including non-UTF-8 arguments.
+The command preserves the environment, working directory, standard streams,
+exit status, and signals.
+Nested invocations reuse inherited allocations without reserving another slot.
+.Pp
+The management executable locates
+.Pa ../libexec/jobmarshal-wrapper
+relative to itself.
+This relative layout intentionally supports relocation after installation.
+Custom bindir and libexecdir settings must preserve this relationship.
+Keep the installed bindir in
+.Ev PATH
+so the wrapper can locate the management command when autostarting.
 .Ss Starting the service
 .Cm start
 starts a detached daemon with its diagnostics in the private
@@ -126,6 +152,10 @@ commands return 0 on success and 1 on execution failure.
 .Cm status
 returns 0 when the service responds and 1 when absent or on an error.
 Usage errors, including a missing command, return 2.
+For
+.Cm run ,
+a missing or unexecutable wrapper returns 1, wrapper setup failures return 125,
+and executed children retain their exit status or terminating signal.
 .Sh SEE ALSO
 .Xr jobmarshal-wrapper 1
 .Pp
