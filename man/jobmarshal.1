@@ -5,37 +5,93 @@
 .Os
 .Sh NAME
 .Nm jobmarshal
-.Nd per-user build coordination
+.Nd per-user build coordination service
 .Sh SYNOPSIS
 .Nm
 .Cm help
+.Op Ar command
+.Nm
+.Cm start
+.Op Fl j Ar N | Fl -jobs Ar N
+.Nm
+.Cm status
+.Nm
+.Cm stop
 .Nm
 .Cm version
-.Nm
-.Op Fl h | Fl -help | Fl -version
 .Sh DESCRIPTION
 .Nm
-provides command-line information for the Jobmarshal project.
-With no arguments, it exits successfully without output.
-.Ss The help command
+manages a private per-user service on Linux and FreeBSD.
 The
 .Cm help
-command prints usage information, available commands, and the homepage.
-The
-.Fl h
 and
-.Fl -help
-options provide the same information.
-.Ss The version command
-The
 .Cm version
-command prints the version and copyright information.
-The
-.Fl -version
-option provides the same information.
+commands print command-line information without accessing service configuration.
+.Ss Starting the service
+.Cm start
+starts a detached daemon with its diagnostics in the private
+.Pa daemon.log
+file in the runtime directory.
+It prints a shell-quoted export of
+.Ev JOBMARSHAL_RUNTIME_DIR
+on standard output, so a shell can use:
+.Bd -literal -offset indent
+eval "$(jobmarshal start -j 8)"
+.Ed
+.Pp
+The maximum job capacity comes from
+.Fl j
+or
+.Fl -jobs ,
+then
+.Ev JOBMARSHAL_JOBS ,
+then the number of available CPUs.
+The value must be a positive decimal integer.
+Starting an existing service succeeds when it is responsive and not draining.
+An explicitly requested capacity must match; stop the service before changing it.
+.Ss Inspecting and stopping the service
+.Cm status
+reports the daemon PID, maximum jobs, active and waiting build counts, and draining
+state.
+The active and waiting counts are currently zero.
+.Cm stop
+acknowledges the request before teardown and waits for complete shutdown.
+Stable lock files remain in the runtime directory after shutdown.
+.Ss Runtime directory
+The runtime directory is selected from
+.Ev JOBMARSHAL_RUNTIME_DIR ,
+then the XDG runtime directory with
+.Pa jobmarshal
+appended, then
+.Pa /tmp/jobmarshal- Ns Ar uid
+if no usable XDG runtime directory exists.
+The final path must be absolute UTF-8 without whitespace.
+It must be a real directory owned by the current user without group or other
+permissions; a new directory is created with mode 0700.
+The service rejects unsafe directories, lock files, and log files.
+.Pp
+Ordinary control operations have bounded connection and I/O deadlines.
+Missing or refused sockets indicate an absent service; other failures are errors.
+.Sh ENVIRONMENT
+.Bl -tag -width JOBMARSHAL_RUNTIME_DIR
+.It Ev JOBMARSHAL_RUNTIME_DIR
+Explicit private runtime directory.
+.It Ev JOBMARSHAL_JOBS
+Explicit capacity used when the command line does not select one.
+.It Ev XDG_RUNTIME_DIR
+XDG runtime base directory, accessed through the XDG library.
+.El
 .Sh EXIT STATUS
-.Ex -std
-Invalid arguments produce exit status 2.
+The
+.Cm help ,
+.Cm start ,
+.Cm stop ,
+and
+.Cm version
+commands return 0 on success and 1 on execution failure.
+.Cm status
+returns 0 when the service responds and 1 when absent or on an error.
+Usage errors, including a missing command, return 2.
 .Sh SEE ALSO
 The project homepage is
 .Lk https://github.com/jmmv/jobmarshal .

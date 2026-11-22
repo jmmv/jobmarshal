@@ -16,3 +16,5 @@ pub(crate) fn jobmarshal() -> (Command, TempDir) {
         .env("XDG_RUNTIME_DIR", directory.path().join("xdg"));
     (command, directory)
 }
+
+pub(crate) mod service;

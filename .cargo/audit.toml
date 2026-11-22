@@ -1,0 +1,5 @@
+# SPDX-License-Identifier: GPL-3.0-only
+[advisories]
+# daemonize is required for Unix detachment.  This advisory concerns maintenance,
+# not a known vulnerability; reassess when a maintained replacement is available.
+ignore = ["RUSTSEC-2025-0069"]

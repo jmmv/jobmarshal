@@ -4,3 +4,5 @@
 //! Command-line support for Jobmarshal.
 
 pub mod cli;
+mod daemon;
+mod lifecycle;

@@ -3,57 +3,59 @@
 
 //! Application metadata and command-line dispatch.
 
+use crate::lifecycle;
 use getoptsargs::prelude::*;
+use jobmarshal_common::{capacity, client, protocol::Response, runtime::Paths};
 use std::env;
-use std::io::{self, Write};
-use std::os::unix::process::CommandExt;
-use std::process::Command;
 
-fn extra_help(writer: &mut dyn Write) -> io::Result<()> {
-    writeln!(writer, "Commands:")?;
-    writeln!(writer, "    help                show command-line usage information")?;
-    writeln!(writer, "    version             show version information")
-}
-
-fn app_setup(builder: Builder) -> Builder {
+fn no_options(builder: CommandBuilder) -> CommandBuilder {
     builder
-        .copyright("Copyright 2026 Julio Merino")
-        .extra_help(extra_help)
-        .homepage(env!("CARGO_PKG_REPOSITORY"))
-        .manpage("jobmarshal", "1")
 }
 
-fn app_main(_matches: Matches) -> Result<i32> {
+fn start_options(builder: CommandBuilder) -> CommandBuilder {
+    builder.optopt("j", "jobs", "shared job capacity (default: available CPUs)", "N")
+}
+
+fn start(_app: Matches, command: Matches) -> Result<i32> {
+    let requested = capacity::requested(command.opt_str("jobs"))?;
+    let paths = Paths::discover()?;
+    lifecycle::start(&paths, requested)?;
+    println!(
+        "export JOBMARSHAL_RUNTIME_DIR='{}'",
+        paths.directory.to_str().unwrap().replace('\'', "'\\''")
+    );
+    Ok(0)
+}
+
+fn status(_app: Matches, _command: Matches) -> Result<i32> {
+    match client::status(&Paths::discover()?)? {
+        Some(Response::Status { active, draining, jobs, pid, waiting }) => {
+            println!(
+                "running: pid={pid} jobs={jobs} active_builds={active} waiting_builds={waiting} draining={draining}"
+            );
+            Ok(0)
+        }
+        None => {
+            println!("not running");
+            Ok(1)
+        }
+        response => anyhow::bail!("unexpected status: {response:?}"),
+    }
+}
+
+fn stop(_app: Matches, _command: Matches) -> Result<i32> {
+    lifecycle::stop(&Paths::discover()?)?;
     Ok(0)
 }
 
 /// Runs the command-line application and returns its exit status.
 pub fn main() -> i32 {
-    let mut args = env::args_os().skip(1);
-    if let Some(command) = args.next() {
-        let option = if command == "help" {
-            Some("--help")
-        } else if command == "version" {
-            Some("--version")
-        } else {
-            None
-        };
-        if let Some(option) = option {
-            if args.next().is_some() {
-                eprintln!("Usage error: {command:?} does not accept arguments");
-                eprintln!("Type `jobmarshal help` or `man 1 jobmarshal` for more information");
-                return 2;
-            }
-            // getoptsargs enables command mode only after registering a custom command.  Until
-            // there is one, use its built-in options through a fresh process: Builder takes Args,
-            // so translated arguments cannot be passed directly.
-            let error = match env::current_exe() {
-                Ok(path) => Command::new(path).arg(option).exec(),
-                Err(error) => error,
-            };
-            eprintln!("jobmarshal: cannot execute built-in command: {error}");
-            return 1;
-        }
-    }
-    app_setup(Builder::new("Jobmarshal", env!("CARGO_PKG_VERSION"), env::args())).run(app_main)
+    Builder::new("Jobmarshal", env!("CARGO_PKG_VERSION"), env::args())
+        .copyright("Copyright 2026 Julio Merino")
+        .homepage(env!("CARGO_PKG_REPOSITORY"))
+        .manpage("jobmarshal", "1")
+        .cmd("start", "start the per-user jobmarshal", start_options, start)
+        .cmd("status", "inspect the per-user jobmarshal", no_options, status)
+        .cmd("stop", "stop the per-user jobmarshal", no_options, stop)
+        .run(command_dispatcher)
 }

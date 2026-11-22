@@ -14,6 +14,10 @@ workspace = true
 
 [dependencies]
 getoptsargs.workspace = true
+anyhow.workspace = true
+daemonize.workspace = true
+fs2.workspace = true
+jobmarshal-common.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true

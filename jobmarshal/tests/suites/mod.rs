@@ -4,3 +4,4 @@
 //! Integration test suites.
 
 mod cli_suite;
+mod lifecycle_suite;
