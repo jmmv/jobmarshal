@@ -53,9 +53,10 @@ An explicitly requested capacity must match; stop the service before changing it
 .Cm status
 reports the daemon PID, maximum jobs, active and waiting build counts, and draining
 state.
-The active and waiting counts are currently zero.
 .Cm stop
-acknowledges the request before teardown and waits for complete shutdown.
+rejects queued and new independent builds, waits for active builds to finish,
+then acknowledges the request before complete teardown.
+Nested wrappers may finish using their inherited allocation while draining.
 Stable lock files remain in the runtime directory after shutdown.
 .Ss Runtime directory
 The runtime directory is selected from
@@ -71,7 +72,15 @@ permissions; a new directory is created with mode 0700.
 The service rejects unsafe directories, lock files, and log files.
 .Pp
 Ordinary control operations have bounded connection and I/O deadlines.
+Admission and draining wait for build completion without a fixed deadline.
 Missing or refused sockets indicate an absent service; other failures are errors.
+.Ss Shared job budget
+The private token FIFO holds one token for every configured job slot.
+Each independent wrapped build reserves one for its implicit slot; native GNU
+make and Cargo clients share the remaining tokens.
+Inherited allocations let nested wrappers run without reserving another slot.
+Tokens lost by native clients reduce capacity until a safe stop and restart.
+Surviving builds prevent replacement of a crashed daemon's pool until they exit.
 .Sh ENVIRONMENT
 .Bl -tag -width JOBMARSHAL_RUNTIME_DIR
 .It Ev JOBMARSHAL_RUNTIME_DIR
@@ -93,6 +102,8 @@ commands return 0 on success and 1 on execution failure.
 returns 0 when the service responds and 1 when absent or on an error.
 Usage errors, including a missing command, return 2.
 .Sh SEE ALSO
+.Xr jobmarshal-wrapper 1
+.Pp
 The project homepage is
 .Lk https://github.com/jmmv/jobmarshal .
 Report issues at

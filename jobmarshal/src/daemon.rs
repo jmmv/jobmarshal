@@ -3,6 +3,8 @@
 
 //! Control service and synchronized teardown.
 
+use crate::admission::{self, Shared, State};
+use crate::pool::Pool;
 use anyhow::{Context, Result, ensure};
 use jobmarshal_common::protocol::{Request, Response, receive, send};
 use jobmarshal_common::runtime::Paths;
@@ -10,10 +12,7 @@ use std::fs::{self, File, Permissions};
 use std::io;
 use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
@@ -36,7 +35,7 @@ pub(crate) fn listen(paths: &Paths) -> Result<UnixListener> {
     Ok(listener)
 }
 
-fn handle(mut stream: UnixStream, jobs: usize, draining: &AtomicBool) -> Result<()> {
+fn handle(mut stream: UnixStream, shared: Shared) -> Result<()> {
     let request = match receive(&mut stream) {
         Ok(request) => request,
         Err(error) => {
@@ -44,33 +43,47 @@ fn handle(mut stream: UnixStream, jobs: usize, draining: &AtomicBool) -> Result<
         }
     };
     let response = match request {
-        Request::Status => Response::Status {
-            active: 0,
-            draining: draining.load(Ordering::SeqCst),
-            jobs,
-            pid: std::process::id(),
-            waiting: 0,
-        },
+        Request::Acquire => return admission::acquire(&mut stream, &shared),
+        Request::Status => {
+            let state = shared.lock().unwrap();
+            Response::Status {
+                active: state.active,
+                draining: state.draining,
+                jobs: state.pool.jobs,
+                pid: std::process::id(),
+                waiting: state.waiting,
+            }
+        }
         Request::Stop => {
-            draining.store(true, Ordering::SeqCst);
+            shared.lock().unwrap().draining = true;
+            loop {
+                let state = shared.lock().unwrap();
+                if state.active == 0 && state.waiting == 0 {
+                    break;
+                }
+                drop(state);
+                thread::sleep(Duration::from_millis(5));
+            }
             Response::Stopped
         }
     };
     send(&mut stream, response)
 }
 
-pub(crate) fn run(paths: &Paths, listener: UnixListener, _owner: File, jobs: usize) -> Result<()> {
-    let draining = Arc::new(AtomicBool::new(false));
+pub(crate) fn run(paths: &Paths, listener: UnixListener, _owner: File, pool: Pool) -> Result<()> {
+    let shared = Arc::new(Mutex::new(State { active: 0, draining: false, pool, waiting: 0 }));
     let mut handlers = Vec::new();
     let outcome = loop {
-        if draining.load(Ordering::SeqCst) {
+        let state = shared.lock().unwrap();
+        if state.draining && state.active == 0 && state.waiting == 0 {
             break Ok(());
         }
+        drop(state);
         match listener.accept() {
             Ok((stream, _)) => {
-                let draining = draining.clone();
+                let shared = Arc::clone(&shared);
                 handlers.push(thread::spawn(move || {
-                    if let Err(error) = handle(stream, jobs, &draining) {
+                    if let Err(error) = handle(stream, shared) {
                         eprintln!("control request: {error:#}");
                     }
                 }));
@@ -95,5 +108,6 @@ pub(crate) fn run(paths: &Paths, listener: UnixListener, _owner: File, jobs: usi
         let _ = handler.join();
     }
     fs::remove_file(paths.socket()).context("cannot remove control socket")?;
+    fs::remove_file(&shared.lock().unwrap().pool.fifo).context("cannot remove token FIFO")?;
     outcome
 }

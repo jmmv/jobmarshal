@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-3.0-only
+[package]
+name = "wrapper"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+publish.workspace = true
+description = "Transparent command wrappers for Jobmarshal"
+
+[[bin]]
+name = "jobmarshal-wrapper"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+fs2.workspace = true
+jobserver.workspace = true
+jobmarshal-common.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+nix.workspace = true
+tempfile.workspace = true

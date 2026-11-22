@@ -151,6 +151,7 @@ dependencies = [
  "fs2",
  "getoptsargs",
  "jobmarshal-common",
+ "nix",
  "tempfile",
 ]
 
@@ -165,6 +166,16 @@ dependencies = [
  "serde_json",
  "tempfile",
  "xdg",
+]
+
+[[package]]
+name = "jobserver"
+version = "0.1.35"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3"
+dependencies = [
+ "getrandom",
+ "libc",
 ]
 
 [[package]]
@@ -412,6 +423,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
 dependencies = [
  "windows-link",
+]
+
+[[package]]
+name = "wrapper"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_cmd",
+ "fs2",
+ "jobserver",
+ "jobmarshal-common",
+ "nix",
+ "tempfile",
 ]
 
 [[package]]

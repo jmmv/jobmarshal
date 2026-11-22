@@ -1,0 +1,73 @@
+.\" Copyright 2026 Julio Merino.
+.\" SPDX-License-Identifier: GPL-3.0-only
+.Dd November 21, 2026
+.Dt JOBMARSHAL-WRAPPER 1
+.Os
+.Sh NAME
+.Nm jobmarshal-wrapper
+.Nd execute commands within a shared native job budget
+.Sh SYNOPSIS
+.Nm
+.Ar command
+.Op Ar argument ...
+.Sh DESCRIPTION
+.Nm
+transparently executes a command on Linux and FreeBSD.
+It preserves arguments, environment, working directory, standard streams,
+exit status, and signals by replacing itself with the command.
+.Pp
+For independent builds, the wrapper starts the per-user
+.Xr jobmarshal 1
+service if necessary and reserves one token for the build's implicit slot.
+It advertises the remaining native FIFO budget through
+.Ev CARGO_MAKEFLAGS ,
+.Ev MAKEFLAGS ,
+and
+.Ev MFLAGS
+while preserving unrelated flags.
+The build lease and participation lock survive execution in descendants.
+The reserved token returns when the final lease descriptor closes.
+.Pp
+A valid inherited GNU or Cargo jobserver allocation is reused without a new
+reservation, including nested builds with a capacity of one.
+Environment selection follows the native library's precedence:
+.Ev CARGO_MAKEFLAGS ,
+.Ev MAKEFLAGS ,
+then
+.Ev MFLAGS .
+Flags without authentication allow independent admission; invalid advertised
+authentication fails without running the command.
+.Pp
+When invoked through a hardlink with another basename, the wrapper searches
+.Ev PATH
+for its own device and inode, skips all its aliases, and executes the next
+executable with that basename.
+The management command must be at that PATH anchor.
+In direct mode, a sibling development
+.Nm jobmarshal
+is preferred; otherwise it is found through PATH.
+.Pp
+Stopping the service rejects queued and new independent builds, lets active and
+nested work finish, and waits for all leases and responses before teardown.
+Surviving participants prevent a new pool after a daemon crash.
+Lost native tokens remain unavailable until a safe stop and restart.
+.Sh ENVIRONMENT
+.Bl -tag -width JOBMARSHAL_RUNTIME_DIR
+.It Ev JOBMARSHAL_RUNTIME_DIR
+Private runtime-directory override; see
+.Xr jobmarshal 1 .
+.It Ev JOBMARSHAL_JOBS
+Requested capacity when autostarting the service.
+.It Ev CARGO_MAKEFLAGS , MAKEFLAGS , MFLAGS
+Inherited native jobserver authentication and preserved build flags.
+.El
+.Sh EXIT STATUS
+Successfully executed commands retain their exit status or signal.
+Wrapper setup or execution errors return 125 and print diagnostics to standard
+error without executing an uncoordinated command.
+.Sh SEE ALSO
+.Xr jobmarshal 1
+.Pp
+.Lk https://github.com/jmmv/jobmarshal
+.Sh AUTHORS
+.An Julio Merino Aq Mt julio@meroh.net

@@ -14,7 +14,7 @@ jobs:
       - run: cargo build --workspace --locked
       - run: cargo build --workspace --locked --release
       - run: cargo test --workspace --locked
-      - run: groff -mdoc -Tutf8 -ww man/jobmarshal.1 > /dev/null
+      - run: for manual in man/*.1; do groff -mdoc -Tutf8 -ww "$manual" > /dev/null; done
       - run: autoreconf -is && ./configure && make -j4 check && make installcheck && make distclean
       - run: |
           mkdir build
@@ -41,8 +41,11 @@ jobs:
             prek run --all-files
             cargo build --workspace --locked
             cargo build --workspace --locked --release
-            cargo test --workspace --locked
-            groff -mdoc -Tutf8 -ww man/jobmarshal.1 > /dev/null
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              echo "Test run $attempt/10"
+              cargo test --workspace --locked
+            done
+            for manual in man/*.1; do groff -mdoc -Tutf8 -ww "$manual" > /dev/null; done
             cargo fmt --all -- --check
             cargo clippy --workspace --locked --all-targets -- -D warnings
             shellcheck admin/*.sh

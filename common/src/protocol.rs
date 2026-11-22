@@ -4,9 +4,12 @@
 //! Versioned newline-delimited control frames.
 
 use anyhow::{Result, ensure};
+use nix::poll::{PollFd, PollFlags, poll};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{Read, Write};
+use std::os::fd::AsFd;
 use std::os::unix::net::UnixStream;
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 /// Maximum frame size, including its final newline.
@@ -17,6 +20,8 @@ pub const TIMEOUT: Duration = Duration::from_secs(3);
 /// A daemon control request.
 #[derive(Debug, Deserialize, Serialize)]
 pub enum Request {
+    /// Reserve one implicit job slot and keep the connection as its lease.
+    Acquire,
     /// Inspect the responsive daemon.
     Status,
     /// Stop the daemon and acknowledge before teardown.
@@ -28,6 +33,11 @@ pub enum Request {
 pub enum Response {
     /// A rejected operation or malformed request.
     Error(String),
+    /// An implicit slot is reserved until this connection closes.
+    Granted {
+        /// Native GNU jobserver FIFO authentication path.
+        fifo: PathBuf,
+    },
     /// Current service state.
     Status {
         /// Number of admitted builds.
@@ -90,6 +100,18 @@ pub fn receive<T: DeserializeOwned>(stream: &mut UnixStream) -> Result<T> {
     let frame: Frame<T> = serde_json::from_slice(&bytes)?;
     ensure!(frame.version == 1, "unsupported jobmarshal protocol version {}", frame.version);
     Ok(frame.body)
+}
+
+/// Waits for admission or draining to finish, then reads a bounded response frame.
+pub fn receive_when_ready<T: DeserializeOwned>(stream: &mut UnixStream) -> Result<T> {
+    let mut descriptors = [PollFd::new(stream.as_fd(), PollFlags::POLLIN)];
+    loop {
+        match poll(&mut descriptors, None::<u16>) {
+            Ok(_) => return receive(stream),
+            Err(nix::errno::Errno::EINTR) => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
 }
 
 #[cfg(test)]

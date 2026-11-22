@@ -3,13 +3,13 @@
 
 //! Daemon startup and shutdown under stable lifecycle ownership.
 
-use crate::daemon;
+use crate::{daemon, pool::Pool};
 use anyhow::{Context, Result, ensure};
 use daemonize::{Daemonize, Outcome};
 use fs2::FileExt;
 use jobmarshal_common::{
     client, locks,
-    protocol::{Request, Response, receive, send},
+    protocol::{Request, Response, receive_when_ready, send},
     runtime::Paths,
 };
 use std::thread;
@@ -32,10 +32,15 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
     if let Some(response) = client::status(paths)? {
         return check_existing(response, requested);
     }
+    let participants = locks::private_file(paths, "participants.lock", false)?;
+    participants.try_lock_exclusive().context(
+        "previous builds are still running; let them finish before restarting the jobmarshal",
+    )?;
     let owner = locks::private_file(paths, "daemon.lock", false)?;
     owner.try_lock_exclusive().context("daemon still owns its resources; retry after shutdown")?;
     let jobs =
         requested.map(Ok).unwrap_or_else(|| thread::available_parallelism().map(usize::from))?;
+    let pool = Pool::create(paths, jobs)?;
     let listener = daemon::listen(paths)?;
     let log = locks::private_file(paths, "daemon.log", true)?;
     match Daemonize::new()
@@ -49,9 +54,10 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
             // flock ownership follows the open file description across fork.  Drop this copy
             // rather than unlocking it, so the parent keeps serializing startup readiness.
             drop(lifecycle);
+            drop(participants);
             let outcome = result
                 .context("cannot daemonize jobmarshal")
-                .and_then(|_| daemon::run(paths, listener, owner, jobs));
+                .and_then(|_| daemon::run(paths, listener, owner, pool));
             if let Err(error) = &outcome {
                 eprintln!("jobmarshal: {error:#}");
             }
@@ -62,6 +68,8 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
             ensure!(parent.first_child_exit_code == 0, "daemonization failed; inspect daemon.log");
             drop(listener);
             drop(owner);
+            drop(participants);
+            drop(pool);
             let deadline = Instant::now() + Duration::from_secs(10);
             loop {
                 if let Some(response) = client::status(paths)? {
@@ -83,7 +91,10 @@ pub(crate) fn stop(paths: &Paths) -> Result<()> {
     let _lifecycle = locks::lifecycle(paths)?;
     let mut stream = client::connect(paths)?.context("jobmarshal is not running")?;
     send(&mut stream, Request::Stop)?;
-    ensure!(matches!(receive(&mut stream)?, Response::Stopped), "unexpected stop response");
+    ensure!(
+        matches!(receive_when_ready(&mut stream)?, Response::Stopped),
+        "unexpected stop response"
+    );
     let owner = locks::private_file(paths, "daemon.lock", false)?;
     locks::exclusive(&owner).context("daemon did not finish shutdown")?;
     ensure!(!paths.socket().exists(), "daemon left its control socket behind");

@@ -5,6 +5,7 @@
 
 pub mod capacity;
 pub mod client;
+pub mod descriptors;
 pub mod locks;
 pub mod protocol;
 pub mod runtime;

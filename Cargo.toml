@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-only
 [workspace]
-members = ["common", "jobmarshal"]
+members = ["common", "jobmarshal", "wrapper"]
 resolver = "3"
 
 [workspace.package]
@@ -28,12 +28,13 @@ collapsible_else_if = "allow"
 [workspace.dependencies]
 assert_cmd = "2"
 getoptsargs = "0.4"
+jobserver = "0.1.35"
 tempfile = "3"
 anyhow = "1"
 daemonize = "0.5"
 fs2 = "0.4"
 jobmarshal-common = { path = "common" }
-nix = { version = "0.30", features = ["fs", "poll", "socket", "user"] }
+nix = { version = "0.30", features = ["fs", "poll", "signal", "socket", "user"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 xdg = "3"

@@ -18,6 +18,7 @@ anyhow.workspace = true
 daemonize.workspace = true
 fs2.workspace = true
 jobmarshal-common.workspace = true
+nix.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true

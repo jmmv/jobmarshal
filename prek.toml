@@ -94,6 +94,14 @@ pass_filenames = false
 files = { glob = ["**/Cargo.toml", "**/Cargo.lock", "admin/check-dependencies.sh", "prek.toml"] }
 
 [[repos.hooks]]
+id = "fixture-fmt"
+name = "Check Rust fixture formatting"
+language = "system"
+entry = "rustfmt"
+args = ["--edition", "2024", "--check"]
+files = "^wrapper/tests/fixtures/.*\\.rs$"
+
+[[repos.hooks]]
 id = "shellcheck"
 name = "Check shell scripts"
 language = "system"

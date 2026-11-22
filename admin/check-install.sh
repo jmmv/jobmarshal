@@ -6,6 +6,7 @@ prefix=$2
 bindir=$3
 docdir=$4
 man1dir=$5
+libexecdir=$6
 stage=$(mktemp -d)
 cleanup() {
     if test -x "$stage$bindir/jobmarshal"; then
@@ -14,9 +15,11 @@ cleanup() {
     rm -rf "$stage"
 }
 trap cleanup EXIT HUP INT TERM
-"$make_cmd" install DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir"
+"$make_cmd" install DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
 test -x "$stage$bindir/jobmarshal"
 test -f "$stage$man1dir/jobmarshal.1"
+test -x "$stage$libexecdir/jobmarshal-wrapper"
+test -f "$stage$man1dir/jobmarshal-wrapper.1"
 "$stage$bindir/jobmarshal" help > "$stage/stdout" 2> "$stage/stderr"
 grep -F "Jobmarshal home page: https://github.com/jmmv/jobmarshal" "$stage/stdout" >/dev/null
 test ! -s "$stage/stderr"
@@ -25,6 +28,9 @@ JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" start -j 2 \
 test ! -s "$stage/stderr"
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" status > "$stage/stdout"
 grep -F 'jobs=2 active_builds=0 waiting_builds=0 draining=false' "$stage/stdout" >/dev/null
+JOBMARSHAL_RUNTIME_DIR="$stage/runtime" JOBMARSHAL_JOBS=2 \
+    CARGO_MAKEFLAGS='' MAKEFLAGS='' MFLAGS='' \
+    PATH="$stage$bindir:$PATH" "$stage$libexecdir/jobmarshal-wrapper" sh -c 'exit 0'
 JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop
 test ! -e "$stage/runtime/control.sock"
 rm -rf "$stage/runtime"
@@ -32,7 +38,7 @@ rm "$stage/stdout" "$stage/stderr"
 for file in LICENSE NEWS.md README.md; do
     test -f "$stage$docdir/$file"
 done
-"$make_cmd" uninstall DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir"
+"$make_cmd" uninstall DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
 if test -n "$(find "$stage" -type f -print)"; then
     echo 'Uninstall left installed files behind' >&2
     exit 1
