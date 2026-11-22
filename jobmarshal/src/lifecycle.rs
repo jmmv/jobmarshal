@@ -3,7 +3,7 @@
 
 //! Daemon startup and shutdown under stable lifecycle ownership.
 
-use crate::{daemon, pool::Pool};
+use crate::{daemon, pool::Pool, wrappers};
 use anyhow::{Context, Result, ensure};
 use daemonize::{Daemonize, Outcome};
 use fs2::FileExt;
@@ -40,6 +40,7 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
     owner.try_lock_exclusive().context("daemon still owns its resources; retry after shutdown")?;
     let jobs =
         requested.map(Ok).unwrap_or_else(|| thread::available_parallelism().map(usize::from))?;
+    wrappers::refresh().context("cannot refresh managed wrappers")?;
     let pool = Pool::create(paths, jobs)?;
     let listener = daemon::listen(paths)?;
     let log = locks::private_file(paths, "daemon.log", true)?;

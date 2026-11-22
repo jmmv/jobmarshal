@@ -10,10 +10,12 @@ rust_sources = jobmarshal/src/main.rs jobmarshal/src/lib.rs jobmarshal/src/cli.r
 	jobmarshal/src/admission.rs jobmarshal/src/pool.rs wrapper/src/main.rs \
 	wrapper/src/lib.rs wrapper/src/admission.rs wrapper/src/execution.rs \
 	wrapper/src/inherited.rs wrapper/src/invocation.rs common/src/stats.rs \
-	jobmarshal/src/accounting.rs jobmarshal/src/stats.rs jobmarshal/src/run.rs
+	jobmarshal/src/accounting.rs jobmarshal/src/stats.rs jobmarshal/src/run.rs \
+	common/src/wrappers.rs jobmarshal/src/wrappers.rs
 rust_tests = jobmarshal/tests/integration_test.rs jobmarshal/tests/common/mod.rs \
 	jobmarshal/tests/suites/mod.rs jobmarshal/tests/suites/cli_suite.rs \
 	jobmarshal/tests/common/service.rs jobmarshal/tests/suites/lifecycle_suite.rs \
+	jobmarshal/tests/suites/wrappers_suite.rs \
 	tests/common/mod.rs wrapper/tests/integration_test.rs wrapper/tests/common/mod.rs \
 	wrapper/tests/suites/mod.rs wrapper/tests/suites/admission_suite.rs \
 	wrapper/tests/suites/cargo_suite.rs wrapper/tests/suites/execution_suite.rs \

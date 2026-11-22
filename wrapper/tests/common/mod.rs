@@ -43,6 +43,7 @@ pub(crate) fn wrapper_at(service: &Service, path: &Path) -> Command {
     let mut command = Command::new(path);
     command
         .env("JOBMARSHAL_RUNTIME_DIR", &service.runtime)
+        .env("XDG_DATA_HOME", service.root.path().join("data"))
         .env("JOBMARSHAL_JOBS", "2")
         .env_remove("CARGO_MAKEFLAGS")
         .env_remove("MAKEFLAGS")

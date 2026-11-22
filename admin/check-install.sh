@@ -9,6 +9,7 @@ man1dir=$5
 libexecdir=$6
 wrappers=$7
 stage=$(mktemp -d)
+export XDG_DATA_HOME="$stage/data"
 cleanup() {
     if test -x "$stage$bindir/jobmarshal"; then
         JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop >/dev/null 2>&1 || :
@@ -73,6 +74,7 @@ relocated=$(mktemp -d)
 rmdir "$relocated"
 mv "$stage" "$relocated"
 stage=$relocated
+export XDG_DATA_HOME="$stage/data"
 check_run
 if test "$run_layout" = yes; then
     JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" stop

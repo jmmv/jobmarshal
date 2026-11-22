@@ -20,7 +20,7 @@ fs2.workspace = true
 jobmarshal-common.workspace = true
 nix.workspace = true
 time.workspace = true
+tempfile.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
-tempfile.workspace = true

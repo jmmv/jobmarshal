@@ -11,6 +11,7 @@ pub(crate) fn jobmarshal() -> (Command, TempDir) {
     let mut command = Command::new(env!("CARGO_BIN_EXE_jobmarshal"));
     command
         .env("HOME", directory.path().join("home"))
+        .env("XDG_DATA_HOME", directory.path().join("data"))
         .env("JOBMARSHAL_RUNTIME_DIR", directory.path().join("runtime"))
         .env("JOBMARSHAL_JOBS", "invalid")
         .env("XDG_RUNTIME_DIR", directory.path().join("xdg"));

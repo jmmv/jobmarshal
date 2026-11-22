@@ -47,7 +47,8 @@ When invoked through a hardlink with another basename, the wrapper searches
 .Ev PATH
 for its own device and inode, skips all its aliases, and executes the next
 executable with that basename.
-The management command must be at that PATH anchor.
+For configure-installed aliases, the management command must be at that PATH
+anchor.  Managed per-user aliases locate the management command through PATH.
 In direct mode, a sibling development
 .Nm jobmarshal
 is preferred; otherwise it is found through PATH.
@@ -57,7 +58,25 @@ nested work finish, and waits for all leases and responses before teardown.
 Surviving participants prevent a new pool after a daemon crash.
 Lost native tokens remain unavailable until a safe stop and restart.
 .Sh INSTALLATION
-Configure selects the complete set of installed command basenames with
+Prefer the per-user management commands:
+.Bd -literal -offset indent
+jobmarshal add-wrapper cargo
+jobmarshal add-wrapper cc
+eval "$(jobmarshal start)"
+.Ed
+.Pp
+Aliases in $XDG_DATA_HOME/jobmarshal/bin are hardlinks to a private user-owned
+copy in $XDG_DATA_HOME/jobmarshal/libexec/jobmarshal-wrapper, falling back to copies
+when hardlinks are unavailable.
+The data base defaults to $HOME/.local/share.
+Keep the installed jobmarshal command in PATH for autostart.
+New daemon launches refresh the private copy and stale aliases; starting an
+existing daemon skips refresh.
+See
+.Xr jobmarshal 1
+for listing, removal, storage rules, and error behavior.
+.Pp
+Alternatively, configure selects the complete set of installed command basenames with
 .Bd -literal -offset indent
 \&./configure --enable-wrappers='cargo cc mold'
 .Ed

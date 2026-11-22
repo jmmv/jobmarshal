@@ -32,6 +32,7 @@ fn run(service: &Service, root: &Path) -> Command {
     command
         .arg("run")
         .env("JOBMARSHAL_RUNTIME_DIR", &service.runtime)
+        .env("XDG_DATA_HOME", service.root.path().join("data"))
         .env("JOBMARSHAL_JOBS", "2")
         .env("PATH", env::join_paths(paths).unwrap())
         .env_remove("CARGO_MAKEFLAGS")

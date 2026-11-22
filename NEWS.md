@@ -1,5 +1,9 @@
 # Changes in version 0.1.0
 
+- Prefer per-user `add-wrapper`, `list-wrappers`, and `remove-wrapper` commands
+  with XDG data storage, a private wrapper copy, automatic refresh on new daemon
+  launches, and idempotent PATH exports from `start`.
+
 - Add `jobmarshal run [--] COMMAND [ARG ...]` with transparent OS-string command
   execution, shared admission, and a relocatable bin/libexec installation layout.
 - Add `jobmarshal stats` and `stats --zero` with observational native token counts,

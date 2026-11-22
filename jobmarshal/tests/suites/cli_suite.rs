@@ -9,7 +9,10 @@ use std::fs;
 const HELP: &str = r#"Usage: jobmarshal command [arg...]
 
 Commands:
+    add-wrapper         install a per-user command wrapper
     help                show command-line usage information
+    list-wrappers       list per-user command wrappers
+    remove-wrapper      remove a per-user command wrapper
     run                 run a command with the shared job budget
     start               start the per-user jobmarshal
     stats               inspect in-memory jobmarshal statistics
@@ -98,4 +101,13 @@ fn test_run_help_without_runtime_access() {
     assert!(help.contains("ARG"));
     assert!(help.contains("optional --"));
     assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
+}
+
+#[test]
+fn test_wrapper_help_without_storage_access() {
+    for action in ["add-wrapper", "list-wrappers", "remove-wrapper"] {
+        let (mut command, directory) = jobmarshal();
+        command.args(["help", action]).assert().success().stderr("");
+        assert_eq!(0, fs::read_dir(directory.path()).unwrap().count());
+    }
 }

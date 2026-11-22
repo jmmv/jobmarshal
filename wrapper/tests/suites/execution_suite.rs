@@ -154,6 +154,7 @@ fn test_rustup_proxy_dispatch() {
     let output = Command::new(anchor.join("rustc"))
         .env("PATH", std::env::join_paths(paths).unwrap())
         .env("JOBMARSHAL_RUNTIME_DIR", &service.runtime)
+        .env("XDG_DATA_HOME", service.root.path().join("data"))
         .env("JOBMARSHAL_JOBS", "2")
         .env_remove("CARGO_MAKEFLAGS")
         .env_remove("MAKEFLAGS")

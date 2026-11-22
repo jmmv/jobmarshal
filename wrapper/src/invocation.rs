@@ -34,7 +34,14 @@ fn resolve(name: &Path) -> Result<(PathBuf, PathBuf)> {
             && metadata.permissions().mode() & 0o111 != 0
             && let Some(anchor) = &anchor
         {
-            return Ok((candidate, anchor.join("jobmarshal")));
+            let server = if jobmarshal_common::wrappers::directory()
+                .is_ok_and(|root| anchor == &root.join("bin"))
+            {
+                PathBuf::from("jobmarshal")
+            } else {
+                anchor.join("jobmarshal")
+            };
+            return Ok((candidate, server));
         }
     }
     ensure!(anchor.is_some(), "cannot locate this wrapper's identity in PATH");

@@ -18,14 +18,16 @@ jobmarshal stop
 ```
 
 `start` detaches the daemon, writes diagnostics to a private `daemon.log`, and
-prints a shell-quoted runtime-directory export.  Capacity comes from `--jobs`
-(or `-j`), then `JOBMARSHAL_JOBS`, then available CPUs.  An existing daemon must
-match an explicit capacity request; stop it before selecting another capacity.
-`status` returns 0 when responsive and 1 when absent; `stop` fails when absent
-and waits for complete teardown after active builds finish.  Queued and new
-independent builds are rejected during draining; nested wrappers reuse their
-inherited allocation and can finish without reserving another slot.
-`jobmarshal help` and `jobmarshal version` do not access runtime configuration.
+prints shell-quoted runtime-directory and PATH exports.  PATH gains the managed
+wrapper directory only if absent; repeated shell initialization is idempotent.
+Capacity comes from `--jobs` (or `-j`), then `JOBMARSHAL_JOBS`, then available
+CPUs.  An existing daemon must match an explicit capacity request; stop it
+before selecting another capacity.  `status` returns 0 when responsive and 1
+when absent; `stop` fails when absent and waits for complete teardown after
+active builds finish.  Queued and new independent builds are rejected during
+draining; nested wrappers reuse their inherited allocation and can finish
+without reserving another slot.  `jobmarshal help` and `jobmarshal version` do
+not access runtime configuration.
 
 Runtime discovery uses `JOBMARSHAL_RUNTIME_DIR`, then the XDG runtime base plus
 `jobmarshal`, then `/tmp/jobmarshal-<uid>` when no usable XDG runtime base
@@ -60,10 +62,50 @@ descriptor flags.  Unavailable tokens include implicit build reservations, nativ
 token holders, and lost tokens; they are not process or thread counts.  Job demand
 and wait duration are not measured.
 
+The preferred way to wrap commands is to manage per-user aliases:
+
+```
+jobmarshal add-wrapper cargo
+jobmarshal add-wrapper cc
+jobmarshal list-wrappers
+# Add this to your shell startup file:
+eval "$(jobmarshal start)"
+# To stop wrapping a command:
+jobmarshal remove-wrapper cc
+```
+
+Aliases live in `$XDG_DATA_HOME/jobmarshal/bin`, defaulting to
+`~/.local/share/jobmarshal/bin`.  `start` prepends this directory to its
+incoming PATH when absent and prints the complete quoted value, never a literal
+`$PATH` reference.  If it is already anywhere in PATH, its position is
+preserved.  Keep the installed `jobmarshal` in PATH so managed aliases can
+autostart it.  Adding an alias does not require the real command to be installed
+yet; when used, the alias executes the real command found after itself in PATH.
+
+The entire managed bin directory belongs to jobmarshal: valid regular-file names
+are the wrapper selection.  Do not put unrelated files there.  Unexpected names,
+symlinks, and other file types cause an error.  Names follow the configure rules
+below.  Adding an existing name and removing an absent name succeed; listing
+prints sorted names, one per line.  These commands do not start the daemon.
+
+Jobmarshal keeps a user-owned copy of the installed wrapper at
+`$XDG_DATA_HOME/jobmarshal/libexec/jobmarshal-wrapper` and hardlinks aliases to
+it, falling back to copies when linking is unavailable.  Before launching a new
+daemon, it compares the installed binary with the private copy and refreshes
+stale aliases.  Starting an existing daemon skips this check, so stop and
+restart the service to refresh wrappers after an upgrade.  `add-wrapper`
+prepares the private copy and refreshes its requested alias immediately.  Failed
+refreshes prevent daemon startup and print diagnostics; retry after fixing the
+error.  Updates use atomic replacement so executing wrappers can finish safely.
+Application directories must be owned by you and must not be symlinks or
+writable by group/others.  The data path cannot contain `:`, which separates
+PATH entries.
+
 The installed `libexec/jobmarshal-wrapper COMMAND [ARG ...]` provides direct
 execution.  Hardlinks with other basenames search PATH for their own inode and
 execute the next real command, skipping wrapper aliases.  The management
-`jobmarshal` must be at the wrapper's PATH anchor.  Direct invocation prefers a
+`jobmarshal` must be at the wrapper's PATH anchor for configure-installed
+aliases; managed aliases find it through PATH.  Direct invocation prefers a
 sibling development `jobmarshal` and otherwise searches PATH.  Valid inherited
 GNU/Cargo jobservers are reused; invalid advertised authentication fails with
 status 125.  Flags without authentication are allowed.  All three native flag
@@ -98,7 +140,8 @@ same directory settings to remove it.  `make installcheck` verifies installation
 and complete removal in a temporary stage.  The `jobmarshal(1)` and
 `jobmarshal-wrapper(1)` manuals document behavior.
 
-Configure selects the complete set of command wrapper hardlinks.  The default,
+As an alternative to the preferred per-user commands above, configure selects
+the complete set of system-installed command wrapper hardlinks.  The default,
 `--disable-wrappers`, and `--enable-wrappers=''` install no aliases.  For example:
 
 ```

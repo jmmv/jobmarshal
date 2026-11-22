@@ -8,8 +8,16 @@
 .Nd per-user build coordination service
 .Sh SYNOPSIS
 .Nm
+.Cm add-wrapper
+.Ar name
+.Nm
 .Cm help
 .Op Ar command
+.Nm
+.Cm list-wrappers
+.Nm
+.Cm remove-wrapper
+.Ar name
 .Nm
 .Cm run
 .Op Fl -
@@ -35,6 +43,51 @@ The
 and
 .Cm version
 commands print command-line information without accessing service configuration.
+.Ss Managing wrappers
+The preferred way to wrap commands is:
+.Bd -literal -offset indent
+jobmarshal add-wrapper cargo
+jobmarshal add-wrapper cc
+jobmarshal list-wrappers
+eval "$(jobmarshal start)"
+jobmarshal remove-wrapper cc
+.Ed
+.Pp
+.Cm add-wrapper
+installs or refreshes one alias without starting the daemon.
+The real command need not exist yet.
+.Cm list-wrappers
+prints sorted names, one per line; an absent directory produces no output.
+.Cm remove-wrapper
+removes an alias.
+Adding an existing name and removing an absent name succeed.
+Names must begin with an ASCII letter or digit and contain only ASCII letters,
+digits, underscores, periods, plus signs, or hyphens.
+The names jobmarshal and jobmarshal-wrapper are reserved.
+.Pp
+Aliases live in
+.Pa $XDG_DATA_HOME/jobmarshal/bin ,
+defaulting to
+.Pa ~/.local/share/jobmarshal/bin .
+The entire bin directory is managed: valid regular-file names define the wrapper
+selection, and unrelated files must not be placed there.
+Unexpected names, symlinks, and other file types are errors.
+Application directories must be real directories owned by you without group or
+other write access.
+The data path cannot contain a colon, which separates PATH entries.
+.Pp
+A private copy of the installed wrapper lives in
+.Pa $XDG_DATA_HOME/jobmarshal/libexec/jobmarshal-wrapper .
+Aliases are hardlinks to this user-owned copy, falling back to copies when
+linking is unavailable.
+Before launching a new daemon, jobmarshal compares the installed binary with the
+private copy and refreshes stale aliases.
+Starting an existing daemon skips refresh; stop and restart after an upgrade.
+Adding a wrapper prepares the private copy and refreshes only that alias.
+Updates use atomic replacement; required refresh failures prevent daemon startup.
+Keep the installed management command in PATH so managed aliases can autostart it.
+Configure-selected wrappers remain available as an alternative; see
+.Xr jobmarshal-wrapper 1 .
 .Ss Running commands
 .Cm run
 executes COMMAND through the installed wrapper and shared job budget,
@@ -63,7 +116,11 @@ starts a detached daemon with its diagnostics in the private
 file in the runtime directory.
 It prints a shell-quoted export of
 .Ev JOBMARSHAL_RUNTIME_DIR
-on standard output, so a shell can use:
+on standard output.
+If the managed bin directory is absent from PATH, it also prints a shell-quoted
+PATH export containing the complete value with that directory prepended.
+An existing entry is left in its current position.
+Repeated initialization does not accumulate entries, so shell startup files can use:
 .Bd -literal -offset indent
 eval "$(jobmarshal start -j 8)"
 .Ed
@@ -137,12 +194,19 @@ Surviving builds prevent replacement of a crashed daemon's pool until they exit.
 Explicit private runtime directory.
 .It Ev JOBMARSHAL_JOBS
 Explicit capacity used when the command line does not select one.
+.It Ev XDG_DATA_HOME
+Persistent wrapper storage base; defaults to $HOME/.local/share.
+.It Ev PATH
+Command lookup and the input to the explicit PATH export from start.
 .It Ev XDG_RUNTIME_DIR
 XDG runtime base directory, accessed through the XDG library.
 .El
 .Sh EXIT STATUS
 The
+.Cm add-wrapper ,
 .Cm help ,
+.Cm list-wrappers ,
+.Cm remove-wrapper ,
 .Cm start ,
 .Cm stats ,
 .Cm stop ,

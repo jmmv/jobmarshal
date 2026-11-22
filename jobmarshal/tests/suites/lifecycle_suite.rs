@@ -20,7 +20,12 @@ fn test_transitions_and_stable_locks() {
     service.command().arg("status").assert().code(1).stdout("not running\n").stderr("");
     service.command().arg("stop").assert().code(1);
     assert_eq!(
-        format!("export JOBMARSHAL_RUNTIME_DIR='{}'\n", service.runtime.display()),
+        format!(
+            "export JOBMARSHAL_RUNTIME_DIR='{}'\nexport PATH='{}:{}'\n",
+            service.runtime.display(),
+            service.root.path().join("data/jobmarshal/bin").display(),
+            std::env::var("PATH").unwrap().replace('\'', "'\\''")
+        ),
         service.start("2")
     );
     let status = service.status();
@@ -70,10 +75,12 @@ fn test_concurrent_starters() {
     let workers: Vec<_> = (0..8)
         .map(|_| {
             let runtime = service.runtime.clone();
+            let data = service.root.path().join("data");
             thread::spawn(move || {
                 AssertCommand::new(env!("CARGO_BIN_EXE_jobmarshal"))
                     .timeout(Duration::from_secs(25))
                     .env("JOBMARSHAL_RUNTIME_DIR", runtime)
+                    .env("XDG_DATA_HOME", data)
                     .env_remove("JOBMARSHAL_JOBS")
                     .args(["start", "-j", "2"])
                     .output()
@@ -233,6 +240,7 @@ fn test_stalled_service_failure_is_bounded() {
     let mut child = ChildGuard(
         Command::new(env!("CARGO_BIN_EXE_jobmarshal"))
             .env("JOBMARSHAL_RUNTIME_DIR", &service.runtime)
+            .env("XDG_DATA_HOME", service.root.path().join("data"))
             .args(["start", "-j", "1"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())

@@ -63,6 +63,7 @@ impl Service {
             .env("JOBMARSHAL_RUNTIME_DIR", &self.runtime)
             .env_remove("JOBMARSHAL_JOBS")
             .env("HOME", self.root.path())
+            .env("XDG_DATA_HOME", self.root.path().join("data"))
             .timeout(Duration::from_secs(25));
         command
     }

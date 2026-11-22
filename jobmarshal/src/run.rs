@@ -3,6 +3,7 @@
 
 //! OS-string command dispatch through the relocatable installed wrapper.
 
+use crate::wrappers;
 use anyhow::{Context, Result};
 use getoptsargs::prelude::*;
 use std::env;
@@ -26,9 +27,7 @@ pub(crate) fn options(builder: CommandBuilder) -> CommandBuilder {
 }
 
 fn execute(command: OsString, arguments: impl Iterator<Item = OsString>) -> Result<()> {
-    let executable = env::current_exe().context("cannot locate jobmarshal executable")?;
-    let directory = executable.parent().context("jobmarshal executable has no parent directory")?;
-    let wrapper = directory.join("../libexec/jobmarshal-wrapper");
+    let wrapper = wrappers::installed()?;
     Err(Command::new(&wrapper).arg(command).args(arguments).exec())
         .with_context(|| format!("cannot execute wrapper {}", wrapper.display()))
 }
