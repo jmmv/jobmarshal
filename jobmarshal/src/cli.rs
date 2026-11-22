@@ -46,8 +46,13 @@ fn remove_wrapper(_app: Matches, command: Matches) -> Result<i32> {
     Ok(0)
 }
 
-fn print_env(_app: Matches, _command: Matches) -> Result<i32> {
-    let output = environment::print(&Paths::locate()?)?;
+fn print_env_options(builder: CommandBuilder) -> CommandBuilder {
+    builder.optopt("", "format", "output format: shell (default) or systemd", "FORMAT")
+}
+
+fn print_env(_app: Matches, command: Matches) -> Result<i32> {
+    let format = command.opt_str("format").unwrap_or_else(|| "shell".to_owned());
+    let output = environment::print(&Paths::locate()?, &format)?;
     io::stdout().lock().write_all(&output)?;
     Ok(0)
 }
@@ -69,7 +74,7 @@ fn stats_options(builder: CommandBuilder) -> CommandBuilder {
 fn start(_app: Matches, command: Matches) -> Result<i32> {
     let requested = capacity::requested(command.opt_str("jobs"))?;
     let paths = Paths::discover()?;
-    let output = environment::print(&paths.directory)?;
+    let output = environment::print(&paths.directory, "shell")?;
     lifecycle::start(&paths, requested)?;
     io::stdout().lock().write_all(&output)?;
     Ok(0)
@@ -113,7 +118,7 @@ pub fn main() -> i32 {
         .manpage("jobmarshal", "1")
         .cmd("add-wrapper", "install a per-user command wrapper", wrapper_options, add_wrapper)
         .cmd("list-wrappers", "list per-user command wrappers", no_options, list_wrappers)
-        .cmd("print-env", "print client environment assignments", no_options, print_env)
+        .cmd("print-env", "print client environment assignments", print_env_options, print_env)
         .cmd("remove-wrapper", "remove a per-user command wrapper", wrapper_options, remove_wrapper)
         .cmd("run", "run a command with the shared job budget", run::options, run::dispatch)
         .cmd("serve", "serve the per-user jobmarshal in the foreground", start_options, serve)

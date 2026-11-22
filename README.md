@@ -112,22 +112,57 @@ status 125.  Flags without authentication are allowed.  All three native flag
 variables retain unrelated options.  The native library selects the first
 present variable from CARGO_MAKEFLAGS, MAKEFLAGS, and MFLAGS.
 
-## Foreground serving
+## Systemd user service
 
-`jobmarshal serve` runs in the foreground and retains its standard streams for
-diagnostics.  `serve` accepts the same `--jobs`
+When systemd integration is installed, enable the service instead of starting a
+new daemon from each shell:
+
+```
+# Stop any daemon started outside systemd first, if one is running.
+jobmarshal stop
+systemctl --user enable jobmarshal.service
+systemctl --user daemon-reload
+systemctl --user start jobmarshal.service
+```
+
+The unit runs `jobmarshal serve` in the foreground, sends diagnostics to the
+journal, and uses `jobmarshal stop` to drain active builds without a stop timeout.
+Use `systemctl --user stop` and `systemctl --user restart` to manage it.  An
+existing detached daemon must be stopped before the unit can take ownership.
+For a capacity override, use `systemctl --user edit jobmarshal.service`:
+
+```ini
+[Service]
+Environment=JOBMARSHAL_JOBS=8
+```
+
+Restart the service after changing capacity.  `serve` accepts the same `--jobs`
 option and capacity environment variable as `start`, rejects an already running
 daemon, and prints no environment assignments.
 
-## Session initialization
+The installed environment generator exports `JOBMARSHAL_RUNTIME_DIR` and adds
+the managed wrapper directory to PATH for future services started by the user
+manager.  The profile.d snippet does the same for login shells that source that
+directory, including conventional SSH and console logins.  Both act only when
+`jobmarshal.service` is enabled; ordinary disabled users incur only builtin
+filesystem checks, with no subprocesses.  A candidate enablement link triggers
+an offline systemctl check to respect masks.  Neither initializer starts a
+daemon or creates application directories.
 
-`jobmarshal print-env` prints shell-quoted runtime-directory and PATH exports
-without starting the daemon, creating directories, or refreshing wrappers.
-It shares runtime discovery and idempotent PATH behavior with `start`:
+Existing processes keep their environment.  After enabling the service, open a
+new login session or initialize the current shell with:
 
 ```
 eval "$(jobmarshal print-env)"
 ```
+
+Shells that do not source profile.d can use the same command in their startup
+configuration.  `print-env` defaults to `--format=shell`; `--format=systemd`
+prints assignments for systemd environment generators.  Both formats reuse the
+same runtime discovery and idempotent PATH behavior as `start`.  The systemd
+format requires UTF-8 values without newlines and rejects unrepresentable output
+before printing any assignments.  These commands and formats are available
+regardless of configure settings.
 
 ## Build and install
 
@@ -156,6 +191,30 @@ DESTDIR=/path/to/stage` to stage an installation and `make uninstall` with the
 same directory settings to remove it.  `make installcheck` verifies installation
 and complete removal in a temporary stage.  The `jobmarshal(1)` and
 `jobmarshal-wrapper(1)` manuals document behavior.
+
+Configure defaults to `--with-systemd=auto`: install the user unit, environment
+generator, and profile.d snippet when systemctl and the vendor user-unit
+directory can be located.  Detection uses systemd pkg-config metadata, falling
+back to `systemd-path`.  `--with-systemd` (or `--with-systemd=yes`) requires
+support and reports missing prerequisites; `--without-systemd` installs none of
+these artifacts.  No option changes the Rust build or CLI capabilities.
+Installation does not enable services or change personal configuration.
+
+Packagers can override `systemduserunitdir`,
+`systemduserenvironmentgeneratordir`, and `profileddir` as configure variables.
+The generator directory defaults to `user-environment-generators` adjacent to
+the detected unit directory; `profileddir` defaults to `/etc/profile.d`:
+
+```
+../configure --with-systemd systemduserunitdir=/usr/lib/systemd/user \
+    systemduserenvironmentgeneratordir=/usr/lib/systemd/user-environment-generators \
+    profileddir=/etc/profile.d
+```
+
+These absolute vendor paths can sit outside prefix.  DESTDIR still stages all
+files.  Install the executable somewhere in the user's PATH so managed wrappers
+can find it.  Service environment overrides for XDG paths or the runtime
+directory must also be supplied to client sessions so they use the same paths.
 
 As an alternative to the preferred per-user commands above, configure selects
 the complete set of system-installed command wrapper hardlinks.  The default,

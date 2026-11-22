@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# shellcheck shell=sh
+jobmarshal_profile_status=$?
+@enablement@
+jobmarshal_profile_init() {
+    if jobmarshal_enabled && jobmarshal_profile_env=$( @jobmarshal@ print-env 2>/dev/null); then
+        eval "$jobmarshal_profile_env"
+    fi
+    unset jobmarshal_profile_env jobmarshal_profile_status
+    unset -f jobmarshal_enabled jobmarshal_profile_init
+    return "$1"
+}
+jobmarshal_profile_init "$jobmarshal_profile_status"

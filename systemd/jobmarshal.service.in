@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-3.0-only
+[Unit]
+Description=Per-user shared build job budget
+Documentation=man:jobmarshal(1)
+
+[Service]
+Type=exec
+ExecStart=@jobmarshal@ serve
+ExecStop=@jobmarshal@ stop
+TimeoutStopSec=infinity
+
+[Install]
+WantedBy=default.target

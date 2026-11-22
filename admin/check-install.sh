@@ -8,6 +8,11 @@ docdir=$4
 man1dir=$5
 libexecdir=$6
 wrappers=$7
+systemd=$8
+systemduserunitdir=$9
+shift 9
+systemduserenvironmentgeneratordir=$1
+profileddir=$2
 stage=$(mktemp -d)
 export XDG_DATA_HOME="$stage/data"
 cleanup() {
@@ -17,17 +22,30 @@ cleanup() {
     rm -rf "$stage"
 }
 trap cleanup EXIT HUP INT TERM
-"$make_cmd" install DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
+install_make() {
+    "$make_cmd" "$@" DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" \
+        man1dir="$man1dir" libexecdir="$libexecdir" systemduserunitdir="$systemduserunitdir" \
+        systemduserenvironmentgeneratordir="$systemduserenvironmentgeneratordir" profileddir="$profileddir"
+}
+install_make install
 test -x "$stage$bindir/jobmarshal"
 test -f "$stage$man1dir/jobmarshal.1"
 test -x "$stage$libexecdir/jobmarshal-wrapper"
 test -f "$stage$man1dir/jobmarshal-wrapper.1"
+if test "$systemd" = yes; then
+    test -f "$stage$systemduserunitdir/jobmarshal.service"
+    test -x "$stage$systemduserenvironmentgeneratordir/60-jobmarshal"
+    test -f "$stage$profileddir/jobmarshal.sh"
+    grep -F ' serve' "$stage$systemduserunitdir/jobmarshal.service" > /dev/null
+fi
+JOBMARSHAL_RUNTIME_DIR="$stage/runtime" "$stage$bindir/jobmarshal" print-env --format=systemd > "$stage/stdout"
+test ! -e "$stage/runtime"
 for name in $wrappers; do
     test ! -L "$stage$bindir/$name"
     test "$stage$bindir/$name" -ef "$stage$libexecdir/jobmarshal-wrapper"
 done
 # Reinstall checks ownership before the wrapper inode changes.
-"$make_cmd" install DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
+install_make install
 for name in $wrappers; do
     test "$stage$bindir/$name" -ef "$stage$libexecdir/jobmarshal-wrapper"
 done
@@ -84,7 +102,7 @@ rm -f "$stage/stdout" "$stage/stderr"
 for file in LICENSE NEWS.md README.md; do
     test -f "$stage$docdir/$file"
 done
-"$make_cmd" uninstall DESTDIR="$stage" prefix="$prefix" bindir="$bindir" docdir="$docdir" man1dir="$man1dir" libexecdir="$libexecdir"
+install_make uninstall
 if test -n "$(find "$stage" -type f -print)"; then
     echo 'Uninstall left installed files behind' >&2
     exit 1

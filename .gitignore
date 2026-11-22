@@ -1,6 +1,9 @@
 *.swp
 *~
 .tickets/
+/60-jobmarshal
+/jobmarshal.service
+/jobmarshal.sh
 /target
 Makefile
 Makefile.in

@@ -1,10 +1,9 @@
 # Changes in version 0.1.0
 
-- Add `jobmarshal serve` for foreground operation with inherited diagnostic
-  streams and the same capacity selection as detached startup.
-
-- Add `jobmarshal print-env` to print shell environment exports without starting
-  the daemon or creating application directories.
+- Add optional systemd user service, environment generator, and profile.d
+  initialization gated on service enablement, selected by configure detection
+  or `--with-systemd`.  Add portable `serve` and `print-env` commands, including
+  shell and systemd environment formats independent of installation settings.
 
 - Prefer per-user `add-wrapper`, `list-wrappers`, and `remove-wrapper` commands
   with XDG data storage, a private wrapper copy, automatic refresh on new daemon

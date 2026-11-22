@@ -17,6 +17,7 @@
 .Cm list-wrappers
 .Nm
 .Cm print-env
+.Op Fl -format Ns = Ns Ar shell|systemd
 .Nm
 .Cm remove-wrapper
 .Ar name
@@ -150,10 +151,51 @@ It rejects an existing daemon.
 prints the runtime-directory and idempotent PATH assignments from
 .Cm start
 without starting a daemon, creating directories, or refreshing wrappers.
-It uses shell-quoted exports suitable for:
+The default
+.Fl -format=shell
+uses shell-quoted exports suitable for:
 .Bd -literal -offset indent
 eval "$(jobmarshal print-env)"
 .Ed
+.Pp
+.Fl -format=systemd
+prints quoted assignments for systemd environment generators.
+Values must be UTF-8 without newlines; unrepresentable output fails before
+printing any assignments.
+Both formats are available even when systemd integration is not installed.
+.Ss Systemd user service
+When installed, enable the user unit after stopping any detached daemon:
+.Bd -literal -offset indent
+jobmarshal stop
+systemctl --user enable jobmarshal.service
+systemctl --user daemon-reload
+systemctl --user start jobmarshal.service
+.Ed
+.Pp
+The unit runs
+.Cm serve ,
+logs to the journal, and drains builds through
+.Cm stop
+without a stop timeout.
+Manage it with systemctl --user stop or restart.
+Set capacity through a service drop-in, for example:
+.Bd -literal -offset indent
+[Service]
+Environment=JOBMARSHAL_JOBS=8
+.Ed
+.Pp
+The environment generator initializes future user-manager services.
+The profile.d snippet initializes login shells that source that directory.
+Both require an enabled unit; absent enablement links require only builtin
+filesystem checks, while candidate links trigger an offline systemctl check
+that respects masking.
+Neither initializer starts the daemon.
+Existing processes retain their environment; use
+.Cm print-env
+for the current shell or shells that do not source profile.d.
+Configure defaults to automatic detection; --with-systemd requires integration
+and --without-systemd disables installation of the unit and both initializers.
+Installation does not enable the unit or modify personal shell files.
 .Ss Inspecting and stopping the service
 .Cm status
 reports the daemon PID, maximum jobs, active and waiting build counts, and draining

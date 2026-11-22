@@ -27,15 +27,35 @@ rust_manifests = Cargo.toml common/Cargo.toml jobmarshal/Cargo.toml wrapper/Carg
 EXTRA_DIST = $(rust_sources) $(rust_tests) $(rust_manifests) Cargo.lock \
 	rust-toolchain.toml rustfmt.toml prek.toml .gitignore .cargo/audit.toml \
 	admin/check-dependencies.sh admin/check-install.sh admin/check-sources.sh \
-	admin/check-markers.sh admin/check-wrappers.sh .github/workflows/test.yml .github/workflows/audit.yml
+	admin/check-markers.sh admin/check-wrappers.sh .github/workflows/test.yml .github/workflows/audit.yml \
+	admin/systemd-enabled.sh admin/render-systemd.sh admin/check-systemd.sh \
+	systemd/jobmarshal.service.in systemd/60-jobmarshal.sh.in systemd/jobmarshal.sh.in
 
-AM_DISTCHECK_CONFIGURE_FLAGS = --enable-wrappers='@JOBMARSHAL_WRAPPERS@'
+# Dedicated archive checks exercise enabled installs with isolated destinations.
+AM_DISTCHECK_CONFIGURE_FLAGS = --enable-wrappers='@JOBMARSHAL_WRAPPERS@' --without-systemd
+
+if WITH_SYSTEMD
+nodist_systemduserunit_DATA = jobmarshal.service
+nodist_systemduserenvironmentgenerator_SCRIPTS = 60-jobmarshal
+nodist_profiled_DATA = jobmarshal.sh
+systemd_inputs = $(srcdir)/admin/render-systemd.sh $(srcdir)/admin/systemd-enabled.sh
+# Regenerate for make-time directory overrides, including staged packaging checks.
+jobmarshal.service: $(srcdir)/systemd/jobmarshal.service.in $(systemd_inputs) systemd-force
+	sh "$(srcdir)/admin/render-systemd.sh" "$<" "$(srcdir)/admin/systemd-enabled.sh" "$@" "$(bindir)/jobmarshal" "@SYSTEMCTL@"
+60-jobmarshal: $(srcdir)/systemd/60-jobmarshal.sh.in $(systemd_inputs) systemd-force
+	sh "$(srcdir)/admin/render-systemd.sh" "$<" "$(srcdir)/admin/systemd-enabled.sh" "$@" "$(bindir)/jobmarshal" "@SYSTEMCTL@"
+	chmod +x "$@"
+jobmarshal.sh: $(srcdir)/systemd/jobmarshal.sh.in $(systemd_inputs) systemd-force
+	sh "$(srcdir)/admin/render-systemd.sh" "$<" "$(srcdir)/admin/systemd-enabled.sh" "$@" "$(bindir)/jobmarshal" "@SYSTEMCTL@"
+install-nodist_systemduserunitDATA install-nodist_systemduserenvironmentgeneratorSCRIPTS install-nodist_profiledDATA: install-wrapper-preflight
+endif
+DISTCLEANFILES = jobmarshal.service 60-jobmarshal jobmarshal.sh
 
 cargo_target_dir = $(abs_top_builddir)/target
 cargo_env = CARGO_TARGET_DIR="$(cargo_target_dir)"
 cargo_manifest = --manifest-path="$(abs_top_srcdir)/Cargo.toml"
 
-.PHONY: debug release lint
+.PHONY: debug release lint systemd-force
 all-local: release
 # One recipe owns the release build, even with parallel make.
 release:
@@ -46,6 +66,7 @@ debug:
 check-local: debug
 	cd "$(abs_top_srcdir)" && $(cargo_env) $(CARGO) test $(cargo_manifest) --workspace --locked
 	cd "$(abs_top_srcdir)" && sh admin/check-sources.sh
+	sh "$(abs_top_srcdir)/admin/check-systemd.sh" "$(MAKE)" "$(abs_top_builddir)/$(PACKAGE)-$(VERSION).tar.gz" "$(cargo_target_dir)"
 	sh "$(abs_top_srcdir)/admin/check-wrappers.sh" "$(MAKE)" "$(abs_top_builddir)/$(PACKAGE)-$(VERSION).tar.gz" "$(cargo_target_dir)"
 lint:
 	cd "$(abs_top_srcdir)" && $(cargo_env) prek run --all-files
@@ -104,4 +125,5 @@ uninstall-local:
 	rm -f "$(DESTDIR)$(libexecdir)/jobmarshal-wrapper" "$(DESTDIR)$(bindir)/jobmarshal"
 installcheck-local:
 	sh "$(abs_top_srcdir)/admin/check-install.sh" "$(MAKE)" "$(prefix)" "$(bindir)" "$(docdir)" \
-	    "$(man1dir)" "$(libexecdir)" '@JOBMARSHAL_WRAPPERS@'
+	    "$(man1dir)" "$(libexecdir)" '@JOBMARSHAL_WRAPPERS@' '@jobmarshal_systemd@' \
+	    "$(systemduserunitdir)" "$(systemduserenvironmentgeneratordir)" "$(profileddir)"

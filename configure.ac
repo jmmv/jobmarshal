@@ -41,5 +41,53 @@ jobmarshal_wrapper_summary=$JOBMARSHAL_WRAPPERS
 AS_IF([test -z "$jobmarshal_wrapper_summary"], [jobmarshal_wrapper_summary=none])
 AC_MSG_NOTICE([selected wrappers: $jobmarshal_wrapper_summary])
 
+AC_ARG_WITH([systemd],
+    [AS_HELP_STRING([--with-systemd@<:@=auto|yes|no@:>@],
+        [install systemd user integration (default: auto)])], [], [with_systemd=auto])
+AS_CASE([$with_systemd], [auto|yes|no], [],
+    [AC_MSG_ERROR([--with-systemd accepts auto, yes, or no])])
+AC_ARG_VAR([systemduserunitdir], [systemd vendor user unit directory])
+AC_ARG_VAR([systemduserenvironmentgeneratordir], [systemd user environment generator directory])
+AC_ARG_VAR([profileddir], [login shell profile directory (default: /etc/profile.d)])
+AC_ARG_VAR([PKG_CONFIG], [path to pkg-config])
+AC_ARG_VAR([SYSTEMD_PATH], [path to systemd-path])
+AC_ARG_VAR([SYSTEMCTL], [path to systemctl])
+AS_IF([test -z "$profileddir"], [profileddir=/etc/profile.d])
+AS_IF([test "$with_systemd" != no], [
+    AC_PATH_PROG([PKG_CONFIG], [pkg-config])
+    AC_PATH_PROG([SYSTEMD_PATH], [systemd-path])
+    AC_PATH_PROG([SYSTEMCTL], [systemctl])
+    AS_IF([test -z "$systemduserunitdir" && test -n "$PKG_CONFIG"], [
+        systemduserunitdir=$("$PKG_CONFIG" --variable=systemduserunitdir systemd 2>/dev/null)
+    ])
+    AS_IF([test -z "$systemduserunitdir" && test -n "$SYSTEMD_PATH"], [
+        systemduserunitdir=$("$SYSTEMD_PATH" systemd-user-unit 2>/dev/null)
+    ])
+    AS_IF([test -z "$systemduserenvironmentgeneratordir" && test -n "$systemduserunitdir"], [
+        systemduserenvironmentgeneratordir="${systemduserunitdir%/*}/user-environment-generators"
+    ])
+])
+jobmarshal_systemd=no
+AS_IF([test "$with_systemd" != no && test -n "$SYSTEMCTL" &&
+       test -n "$systemduserunitdir" && test -n "$systemduserenvironmentgeneratordir"], [
+    jobmarshal_systemd=yes
+    for jobmarshal_directory in "$systemduserunitdir" "$systemduserenvironmentgeneratordir" "$profileddir"; do
+        AS_CASE([$jobmarshal_directory], [/*], [],
+            [AC_MSG_ERROR([systemd installation directories must be absolute])])
+    done
+], [
+    AS_IF([test "$with_systemd" = yes], [
+        AC_MSG_ERROR([systemd integration requires systemctl and a user unit directory; install systemd tooling or set SYSTEMCTL and systemduserunitdir])
+    ])
+])
+AM_CONDITIONAL([WITH_SYSTEMD], [test "$jobmarshal_systemd" = yes])
+AC_SUBST([jobmarshal_systemd])
+AC_MSG_NOTICE([systemd integration: $jobmarshal_systemd])
+AS_IF([test "$jobmarshal_systemd" = yes], [
+    AC_MSG_NOTICE([systemd user units: $systemduserunitdir])
+    AC_MSG_NOTICE([systemd environment generators: $systemduserenvironmentgeneratordir])
+    AC_MSG_NOTICE([shell profiles: $profileddir])
+])
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

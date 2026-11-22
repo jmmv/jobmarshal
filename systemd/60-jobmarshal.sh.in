@@ -1,0 +1,7 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+@enablement@
+if jobmarshal_enabled; then
+    exec @jobmarshal@ print-env --format=systemd
+fi
+exit 0
