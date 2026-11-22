@@ -6,4 +6,4 @@
 #[allow(dead_code)]
 #[path = "../../../tests/common/mod.rs"]
 mod shared;
-pub(crate) use shared::{ChildGuard, Service, copy_executable};
+pub(crate) use shared::{ChildGuard, Service, copy_executable, wait};

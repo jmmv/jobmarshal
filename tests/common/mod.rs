@@ -57,14 +57,19 @@ impl Service {
         Self { root, runtime }
     }
 
-    pub(crate) fn command(&self) -> Command {
-        let mut command = Command::new(binary("jobmarshal"));
+    pub(crate) fn process(&self) -> ProcessCommand {
+        let mut command = ProcessCommand::new(binary("jobmarshal"));
         command
             .env("JOBMARSHAL_RUNTIME_DIR", &self.runtime)
             .env_remove("JOBMARSHAL_JOBS")
             .env("HOME", self.root.path())
-            .env("XDG_DATA_HOME", self.root.path().join("data"))
-            .timeout(Duration::from_secs(25));
+            .env("XDG_DATA_HOME", self.root.path().join("data"));
+        command
+    }
+
+    pub(crate) fn command(&self) -> Command {
+        let mut command = Command::from(self.process());
+        command.timeout(Duration::from_secs(25));
         command
     }
 

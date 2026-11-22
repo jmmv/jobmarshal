@@ -52,6 +52,12 @@ fn print_env(_app: Matches, _command: Matches) -> Result<i32> {
     Ok(0)
 }
 
+fn serve(_app: Matches, command: Matches) -> Result<i32> {
+    let requested = capacity::requested(command.opt_str("jobs"))?;
+    lifecycle::serve(&Paths::discover()?, requested)?;
+    Ok(0)
+}
+
 fn start_options(builder: CommandBuilder) -> CommandBuilder {
     builder.optopt("j", "jobs", "shared job capacity (default: available CPUs)", "N")
 }
@@ -110,6 +116,7 @@ pub fn main() -> i32 {
         .cmd("print-env", "print client environment assignments", no_options, print_env)
         .cmd("remove-wrapper", "remove a per-user command wrapper", wrapper_options, remove_wrapper)
         .cmd("run", "run a command with the shared job budget", run::options, run::dispatch)
+        .cmd("serve", "serve the per-user jobmarshal in the foreground", start_options, serve)
         .cmd("start", "start the per-user jobmarshal", start_options, start)
         .cmd("stats", "inspect in-memory jobmarshal statistics", stats_options, stats)
         .cmd("status", "inspect the per-user jobmarshal", no_options, status)

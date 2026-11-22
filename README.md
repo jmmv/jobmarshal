@@ -112,6 +112,13 @@ status 125.  Flags without authentication are allowed.  All three native flag
 variables retain unrelated options.  The native library selects the first
 present variable from CARGO_MAKEFLAGS, MAKEFLAGS, and MFLAGS.
 
+## Foreground serving
+
+`jobmarshal serve` runs in the foreground and retains its standard streams for
+diagnostics.  `serve` accepts the same `--jobs`
+option and capacity environment variable as `start`, rejects an already running
+daemon, and prints no environment assignments.
+
 ## Session initialization
 
 `jobmarshal print-env` prints shell-quoted runtime-directory and PATH exports

@@ -1,5 +1,8 @@
 # Changes in version 0.1.0
 
+- Add `jobmarshal serve` for foreground operation with inherited diagnostic
+  streams and the same capacity selection as detached startup.
+
 - Add `jobmarshal print-env` to print shell environment exports without starting
   the daemon or creating application directories.
 

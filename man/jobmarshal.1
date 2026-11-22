@@ -26,6 +26,9 @@
 .Ar COMMAND
 .Op Ar ARG ...
 .Nm
+.Cm serve
+.Op Fl j Ar N | Fl -jobs Ar N
+.Nm
 .Cm start
 .Op Fl j Ar N | Fl -jobs Ar N
 .Nm
@@ -137,6 +140,11 @@ then the number of available CPUs.
 The value must be a positive decimal integer.
 Starting an existing service succeeds when it is responsive and not draining.
 An explicitly requested capacity must match; stop the service before changing it.
+.Pp
+.Cm serve
+accepts the same capacity options but runs in the foreground, retains its
+standard streams for diagnostics, and prints no environment assignments.
+It rejects an existing daemon.
 .Ss Session initialization
 .Cm print-env
 prints the runtime-directory and idempotent PATH assignments from
@@ -219,6 +227,7 @@ The
 .Cm list-wrappers ,
 .Cm print-env ,
 .Cm remove-wrapper ,
+.Cm serve ,
 .Cm start ,
 .Cm stats ,
 .Cm stop ,

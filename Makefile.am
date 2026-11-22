@@ -16,7 +16,7 @@ rust_tests = jobmarshal/tests/integration_test.rs jobmarshal/tests/common/mod.rs
 	jobmarshal/tests/suites/mod.rs jobmarshal/tests/suites/cli_suite.rs \
 	jobmarshal/tests/common/service.rs jobmarshal/tests/suites/lifecycle_suite.rs \
 	jobmarshal/tests/suites/wrappers_suite.rs \
-	jobmarshal/tests/suites/environment_suite.rs \
+	jobmarshal/tests/suites/environment_suite.rs jobmarshal/tests/suites/serve_suite.rs \
 	tests/common/mod.rs wrapper/tests/integration_test.rs wrapper/tests/common/mod.rs \
 	wrapper/tests/suites/mod.rs wrapper/tests/suites/admission_suite.rs \
 	wrapper/tests/suites/cargo_suite.rs wrapper/tests/suites/execution_suite.rs \

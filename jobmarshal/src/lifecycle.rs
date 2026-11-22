@@ -12,6 +12,7 @@ use jobmarshal_common::{
     protocol::{Request, Response, receive_when_ready, send},
     runtime::Paths,
 };
+use nix::sys::stat::{Mode, umask};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -27,9 +28,10 @@ fn check_existing(response: Response, requested: Option<usize>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
+fn launch(paths: &Paths, requested: Option<usize>, foreground: bool) -> Result<()> {
     let lifecycle = locks::lifecycle(paths)?;
     if let Some(response) = client::status(paths)? {
+        ensure!(!foreground, "jobmarshal is already running; stop it before serving");
         return check_existing(response, requested);
     }
     let participants = locks::private_file(paths, "participants.lock", false)?;
@@ -43,6 +45,12 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
     wrappers::refresh().context("cannot refresh managed wrappers")?;
     let pool = Pool::create(paths, jobs)?;
     let listener = daemon::listen(paths)?;
+    if foreground {
+        umask(Mode::from_bits_truncate(0o077));
+        drop(participants);
+        drop(lifecycle);
+        return daemon::run(paths, listener, owner, pool);
+    }
     let log = locks::private_file(paths, "daemon.log", true)?;
     match Daemonize::new()
         .working_directory(&paths.directory)
@@ -86,6 +94,14 @@ pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
             }
         }
     }
+}
+
+pub(crate) fn serve(paths: &Paths, requested: Option<usize>) -> Result<()> {
+    launch(paths, requested, true)
+}
+
+pub(crate) fn start(paths: &Paths, requested: Option<usize>) -> Result<()> {
+    launch(paths, requested, false)
 }
 
 pub(crate) fn stop(paths: &Paths) -> Result<()> {

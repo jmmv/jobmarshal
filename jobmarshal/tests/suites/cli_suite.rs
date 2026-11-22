@@ -15,6 +15,7 @@ Commands:
     print-env           print client environment assignments
     remove-wrapper      remove a per-user command wrapper
     run                 run a command with the shared job budget
+    serve               serve the per-user jobmarshal in the foreground
     start               start the per-user jobmarshal
     stats               inspect in-memory jobmarshal statistics
     status              inspect the per-user jobmarshal
