@@ -1,0 +1,110 @@
+# Jobmarshal
+# SPDX-License-Identifier: GPL-3.0-only
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks"
+rev = "v6.0.0"
+
+[[repos.hooks]]
+id = "check-case-conflict"
+
+[[repos.hooks]]
+id = "check-executables-have-shebangs"
+
+[[repos.hooks]]
+id = "check-merge-conflict"
+
+[[repos.hooks]]
+id = "check-shebang-scripts-are-executable"
+
+[[repos.hooks]]
+id = "check-symlinks"
+
+[[repos.hooks]]
+id = "check-vcs-permalinks"
+
+[[repos.hooks]]
+id = "check-yaml"
+
+[[repos.hooks]]
+id = "detect-private-key"
+
+[[repos.hooks]]
+id = "double-quote-string-fixer"
+
+[[repos.hooks]]
+id = "end-of-file-fixer"
+
+[[repos.hooks]]
+id = "file-contents-sorter"
+files = "\\.gitignore$"
+
+[[repos.hooks]]
+id = "mixed-line-ending"
+args = ["--fix=lf"]
+
+[[repos.hooks]]
+id = "trailing-whitespace"
+
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+id = "cargo-clippy"
+name = "Check Rust clippy"
+language = "system"
+entry = "cargo"
+args = ["clippy", "--workspace", "--locked", "--all-features", "--all-targets", "--", "-D", "warnings"]
+pass_filenames = false
+always_run = true
+
+[[repos.hooks]]
+id = "cargo-fmt"
+name = "Check Rust fmt"
+language = "system"
+entry = "cargo"
+args = ["fmt", "--all", "--", "--check"]
+pass_filenames = false
+always_run = true
+
+[[repos.hooks]]
+id = "cargo-no-openssl"
+name = "Check for OpenSSL dependencies"
+language = "system"
+entry = "sh"
+args = ["admin/check-dependencies.sh"]
+files = "^Cargo\\.(toml|lock)$"
+pass_filenames = false
+
+[[repos.hooks]]
+id = "rust-sources"
+name = "Check Rust source list"
+language = "system"
+entry = "admin/check-sources.sh"
+files = "(\\.rs$|Makefile\\.am$|check-sources\\.sh$)"
+pass_filenames = false
+always_run = true
+
+[[repos.hooks]]
+id = "cargo-machete"
+name = "Check Rust unused dependencies"
+language = "script"
+entry = "admin/check-dependencies.sh"
+pass_filenames = false
+files = { glob = ["**/Cargo.toml", "**/Cargo.lock", "admin/check-dependencies.sh", "prek.toml"] }
+
+[[repos.hooks]]
+id = "shellcheck"
+name = "Check shell scripts"
+language = "system"
+entry = "shellcheck"
+files = "\\.sh(\\.in)?$"
+
+[[repos.hooks]]
+id = "do-not-submit"
+name = "Check for [D]O NOT SUBMIT markers"
+language = "system"
+entry = "sh"
+args = ["admin/check-markers.sh"]
+pass_filenames = false
+always_run = true

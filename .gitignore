@@ -1,0 +1,17 @@
+*.swp
+*~
+.tickets/
+/target
+Makefile
+Makefile.in
+aclocal.m4
+admin/install-sh
+admin/missing
+autom4te.cache/
+build/
+config.log
+config.status
+configure
+configure~
+jobmarshal-*.tar.gz
+target/
